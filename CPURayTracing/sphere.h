@@ -12,6 +12,14 @@ class sphere : public hittable {
     box_ = aabb(center - vec3(radius), center + vec3(radius));
   }
 
+  sphere(double radius, std::shared_ptr<material> mat) {
+    center_ = point3(0);
+    radius_ = std::fmax(0, radius);
+    mat_ = mat;
+    is_moving_ = false;
+    box_ = aabb(center_ - vec3(radius), center_ + vec3(radius));
+  }
+
   // moving sphere
   sphere(point3 center1, point3 center2, double radius,
          std::shared_ptr<material> mat) {

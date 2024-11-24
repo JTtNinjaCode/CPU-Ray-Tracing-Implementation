@@ -2,6 +2,7 @@
 #include <map>
 
 #include "hittable.h"
+#include "onb.h"
 #include "ray.h"
 #include "spectrum.h"
 #include "texture.h"
@@ -38,8 +39,9 @@ class material {
     return 0;
   }
 
-  virtual color emitted(double u, double v, const point3& p) const {
-    return color(0, 0, 0);
+  virtual color emitted(const ray& r_in, const hit_record& rec, double u,
+                        double v, const point3& p) const {
+    return color(0);
   }
 
   virtual bool spectrum_scatter(const ray& r_in, const hit_record& record,
@@ -62,6 +64,12 @@ class lambertian : public material {
   virtual bool scatter(const ray& r_in, const hit_record& record,
                        color& attenuation, ray& scattered,
                        double& pdf) const override {
+    //onb uvw(record.normal);
+    //auto scatter_direction = uvw.transform(random_cosine_direction());
+    //scattered = ray(record.p, unit_vector(scatter_direction), r_in.time());
+    //attenuation = tex_->sample(record.u, record.v, record.p);
+    //pdf = dot(uvw.y, scattered.direction()) / pi;
+
     auto scatter_direction = record.normal + random_uint_vec();
     if (scatter_direction.near_zero()) scatter_direction = record.normal;
     scattered = ray(record.p, scatter_direction, r_in.time());
@@ -71,8 +79,7 @@ class lambertian : public material {
 
   double scattering_pdf(const ray& r_in, const hit_record& rec,
                         const ray& scattered) const override {
-    auto cos_theta = dot(rec.normal, unit_vector(scattered.direction()));
-    return cos_theta < 0 ? 0 : cos_theta / pi;
+    return 1 / (2 * pi);
   }
 
  private:
@@ -110,6 +117,12 @@ class dielectric : public material {
     tex_ = albedo;
     refract_ = refract;
   }
+
+  dielectric(float refract) {
+    tex_ = std::make_shared<solid_color>(color(1));
+    refract_ = refract;
+  }
+
   // [out] scattered, attenuation
   virtual bool scatter(const ray& r_in, const hit_record& record,
                        color& attenuation, ray& scattered,
@@ -135,7 +148,7 @@ class dielectric : public material {
   }
 
  private:
-  // Use Schlick's approximation for reflectance. just a magic.
+  // Use Schlick's approximation for reflectance. just a magic formula.
   static double reflectance(double cosine, double refraction_index) {
     auto r0 = (1 - refraction_index) / (1 + refraction_index);
     r0 = r0 * r0;
@@ -177,7 +190,9 @@ class diffuse_light : public material {
   diffuse_light(std::shared_ptr<texture> tex_) : tex_(tex_) {}
   diffuse_light(color albedo) { tex_ = std::make_shared<solid_color>(albedo); }
 
-  color emitted(double u, double v, const point3& p) const override {
+  color emitted(const ray& r_in, const hit_record& record, double u, double v,
+                const point3& p) const override {
+    if (!record.front_face) return color(0, 0, 0);
     return tex_->sample(u, v, p);
   }
 

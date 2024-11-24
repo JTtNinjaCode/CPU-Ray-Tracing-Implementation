@@ -65,8 +65,8 @@ void defocus_blur() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_lens(400, 16.0 / 9.0, point3(13, 2, 3), vec3(1, 1, 1), 2.0, 15,
-                      20.0, 100, 5);
+  cam.initialize_lens(1280, 16.0 / 9.0, point3(13, 2, 3), vec3(1, 1, 1), 2.0,
+                      15, 20.0, 1000, 5);
   cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
   cam.render(of, world);
 }
@@ -216,8 +216,8 @@ void marble_texture() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(400, 16.0 / 9.0, point3(18, 3, 4), vec3(0, 0, 0),
-                             1, 30.0, 100, 5);
+  cam.initialize_perspective(1080, 16.0 / 9.0, point3(18, 3, 4), vec3(0, 0, 0),
+                             1, 30.0, 1000, 5);
   cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
   cam.render(of, world);
 }
@@ -385,11 +385,11 @@ void cornell_box() {
                                          vec3(0, 555, 0), white));
 
   auto big_box = std::make_shared<translate>(
-      vec3(100, 0, 100), box(point3(0, 0, 0), point3(165, 330, 165), white));
+      vec3(100, 0, 100), box(point3(0), point3(165, 330, 165), white));
   world.push_back(big_box);
 
   auto small_box = std::make_shared<translate>(
-      vec3(50, 0, 50), box(point3(0, 0, 0), point3(165, 165, 165), white));
+      vec3(50, 0, 50), box(point3(0), point3(165, 165, 165), white));
   world.push_back(small_box);
 
   bvh_node bvh(world);
@@ -401,8 +401,8 @@ void cornell_box() {
   cam.render(of, bvh);
 }
 
-void skybox() {
-  auto skybox = std::make_shared<picture_texture>(
+void skybox_and_fisheye() {
+  auto skybox_and_fisheye = std::make_shared<picture_texture>(
       std::make_shared<image>("./assets/bathroom.exr"));
   hittable_list world;
 
@@ -411,9 +411,12 @@ void skybox() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_fisheye(1080, 1, point3(1.1, 1.8, 1.1), point3(0, 0, 0), 1.0,
-                         90, 1000, 5);
-  cam.background_ = skybox;
+  // cam.initialize_fisheye(1080, 1, point3(1.1, 1.8, 1.1), point3(0, 0,
+  // 0), 1.0,
+  //                        90, 1000, 5);
+  cam.initialize_perspective(1080, 1, point3(1.1, 1.8, 1.1), point3(0), 1.0, 90,
+                             1000, 5);
+  cam.background_ = skybox_and_fisheye;
   cam.render(of, world);
 }
 
@@ -435,18 +438,20 @@ void smoke_cornell_box() {
                                          vec3(0, 0, 555), white));
   world.push_back(std::make_shared<quad>(point3(0, 0, 555), vec3(555, 0, 0),
                                          vec3(0, 555, 0), white));
-  std::shared_ptr<hittable> box1 =
-      box(point3(265, 0, 295), point3(430, 330, 460), white);
-  std::shared_ptr<hittable> box2 =
-      box(point3(130, 0, 65), point3(295, 165, 230), white);
+  std::shared_ptr<hittable> box1 = std::make_shared<translate>(
+      vec3(265, 0, 285), std::make_shared<rotate_y>(
+                             box(point3(0), point3(150, 280, 150), white), 45));
+  std::shared_ptr<hittable> box2 = std::make_shared<translate>(
+      vec3(130, 0, 65), std::make_shared<rotate_y>(
+                            box(point3(0), point3(140, 140, 140), white), -15));
   world.push_back(std::make_shared<volumne>(
-      box1, 0.01, std::make_shared<solid_color>(color(0, 0, 0))));
+      box1, 0.02, std::make_shared<solid_color>(color(0))));
   world.push_back(std::make_shared<volumne>(
-      box2, 0.01, std::make_shared<solid_color>(color(1, 1, 1))));
+      box2, 0.02, std::make_shared<solid_color>(color(1))));
   camera cam;
 
-  cam.initialize_perspective(400, 1.0, point3(278, 278, -800),
-                             point3(278, 278, 0), 1, 40, 100, 5);
+  cam.initialize_perspective(512, 1.0, point3(278, 278, -800),
+                             point3(278, 278, 0), 1, 40, 500, 5);
 
   cam.background_ = solid_color::black;
   std::ofstream of("output.ppm");
@@ -487,7 +492,7 @@ void rotate() {
   cam.initialize_fisheye(400, 1.0, point3(278, 278, -100), point3(278, 278, 0),
                          1, 90, 100, 5);
   cam.initialize_perspective(400, 1.0, point3(278, 278, -800),
-                             point3(278, 278, 0), 1, 40, 1000, 5);
+                             point3(278, 278, 0), 1, 40, 100, 5);
 
   cam.background_ = solid_color::black;
   std::ofstream of("output.ppm");
@@ -498,7 +503,7 @@ void gltf_model_test() {
   gltf::GltfLoader model("./assets/Fox/glTF/Fox.gltf");
   auto& OutputPrimitives = model.getOutputPrimitives();
 
-  auto skybox = std::make_shared<picture_texture>(
+  auto skybox_and_fisheye = std::make_shared<picture_texture>(
       std::make_shared<image>("./assets/bathroom.exr"));
 
   // 加載三角形模型
@@ -556,13 +561,54 @@ void gltf_model_test() {
   cam.initialize_perspective(400, 16.0 / 9.0, point3(0, 10000, -10000),
                              point3(0, 0, 0), 1, 20.0, 20, 5);
   bvh_node bvh(world);
-  cam.background_ = skybox;
+  cam.background_ = skybox_and_fisheye;
+  cam.render(of, bvh);
+}
+
+void final_scene() {
+  hittable_list boxes1;
+  auto ground = std::make_shared<lambertian>(color(0.48, 0.83, 0.53));
+  int boxes_per_side = 20;
+  for (int i = 0; i < boxes_per_side; i++) {
+    for (int j = 0; j < boxes_per_side; j++) {
+      auto w = 100.0;
+      auto x0 = -1000.0 + i * w;
+      auto z0 = -1000.0 + j * w;
+      auto y0 = 0.0;
+      auto x1 = x0 + w;
+      auto y1 = random_double(1, 101);
+      auto z1 = z0 + w;
+      boxes1.push_back(box(point3(x0, y0, z0), point3(x1, y1, z1), ground));
+    }
+  }
+
+  hittable_list world;
+  world.push_back(std::make_shared<bvh_node>(boxes1));
+
+  auto light = std::make_shared<diffuse_light>(color(7, 7, 7));
+  world.push_back(std::make_shared<quad>(point3(123, 554, 147), vec3(300, 0, 0),
+                                         vec3(0, 0, 265), light));
+  world.push_back(std::make_shared<sphere>(point3(260, 150, 45), 50,
+                                           std::make_shared<dielectric>(1.5)));
+
+  auto pertext = std::make_shared<perlin_texture>(8);
+  world.push_back(std::make_shared<translate>(
+      point3(180, 280, 400),
+      std::make_shared<rotate_x>(
+          std::make_shared<sphere>(point3(0), 80,
+                                   std::make_shared<lambertian>(pertext)),
+          -90)));
+
+  camera cam;
+  cam.initialize_perspective(512, 1.0, point3(478, 278, -600),
+                             point3(278, 278, 0), 1, 40.0, 1000, 4);
+  bvh_node bvh(world);
+  std::ofstream of("output.ppm");
   cam.render(of, bvh);
 }
 
 int main() {
-  // onb f(vec3(2, 2, 2));
-  switch (16) {
+  switch (17) {
     case 1:
       three_mat_ball();  // OK
       break;
@@ -574,6 +620,9 @@ int main() {
       break;
     case 16:
       rotate();  // OK
+      break;
+    case 17:
+      final_scene();  // OK
       break;
     case 2:
       earth();  // OK
@@ -606,7 +655,7 @@ int main() {
       cornell_box();  // OK
       break;
     case 10:
-      skybox();  // OK
+      skybox_and_fisheye();  // OK
       break;
     case 11:
       smoke_cornell_box();  // OK

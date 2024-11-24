@@ -44,7 +44,7 @@ class perlin {
     double weight = 1.0;
     for (int i = 0; i < depth; i++) {
       accum += weight * noise(temp_p);
-      weight *= 0.5;
+      weight *= 0.5;  // 權重減半
       temp_p *= 2.0;  // 頻率加倍
     }
     return std::fabs(accum);

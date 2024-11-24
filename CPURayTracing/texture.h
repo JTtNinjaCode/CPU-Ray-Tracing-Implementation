@@ -21,8 +21,10 @@ class solid_color : public texture {
   color color_;
 };
 
-std::shared_ptr<solid_color> solid_color::black = std::make_shared<solid_color>(color(0, 0, 0));
-std::shared_ptr<solid_color> solid_color::white = std::make_shared<solid_color>(color(1, 1, 1));
+std::shared_ptr<solid_color> solid_color::black =
+    std::make_shared<solid_color>(color(0, 0, 0));
+std::shared_ptr<solid_color> solid_color::white =
+    std::make_shared<solid_color>(color(1, 1, 1));
 
 class checker_texture : public texture {
  public:
@@ -68,11 +70,12 @@ class picture_texture : public texture {
 
 class perlin_texture : public texture {
  public:
-  // 固定顏色為黑白
   perlin_texture(double scale) { scale_ = scale; }
+
+  // 固定顏色為黑白，z 軸方向變化，有 7 層 turb，也就是有 7 層 noise疊加
   color sample(double u, double v, point3 p) override {
     return color(.5, .5, .5) *
-           (1 + std::sin(scale_ * p.z() + 10 * noise_.turb(7, p)));
+           (1 + std::sin((p.x() + 70 * noise_.turb(7, p / scale_)) / scale_));
   }
 
  private:

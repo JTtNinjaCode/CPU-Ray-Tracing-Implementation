@@ -1,5 +1,6 @@
 #pragma once
 #include "vec3.h"
+
 class frame {
  public:
   vec3 transform(vec3 v) { return 0 + v.x() * x + v.y() * y + v.z() * z; }
@@ -11,8 +12,8 @@ class frame {
   vec3 o = vec3(0.0);
 };
 // 使用 normal 建構出一個 orthnormal basis，選擇垂直於 normal
-// 的平面中的兩個垂直向量以及 normal 作為 basis，只保證 y = normal，x, z
-// 是平面中的兩垂直向量
+// 的平面中的兩個垂直向量以及 normal 作為 basis，只保證 y direction 指向 normal
+// x, z 的可能性有無限多種，但保證是平面中的兩垂直向量
 
 class onb : public frame {
  public:
