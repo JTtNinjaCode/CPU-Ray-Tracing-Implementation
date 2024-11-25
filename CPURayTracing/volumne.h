@@ -7,21 +7,19 @@
 // 賦予一個密度，並且有機會穿過該物件，因為是
 // volumne，因此所包住的物件必須是有內外之分的
 class volumne : public hittable {
- public:
-  volumne(std::shared_ptr<hittable> boundary, double density,
-          std::shared_ptr<texture> tex) {
+public:
+  volumne(std::shared_ptr<hittable> boundary, double density, std::shared_ptr<texture> tex) {
     boundary_ = boundary;
     density_ = density;
     phase_function_ = std::make_shared<isotropic>(tex);
   }
 
   // 碰到 volumne 以後，碰到的點會在 volumne 內
-  bool hit(const ray& r, interval ray_t, hit_record& record) const {
+  bool hit(const ray &r, interval ray_t, hit_record &record) const {
     hit_record record1, record2;
     // record 分別代表碰到 volumne 的兩個點
     if (!boundary_->hit(r, interval::universe, record1)) return false;
-    if (!boundary_->hit(r, interval(record1.t + 0.0001, infinity), record2))
-      return false;
+    if (!boundary_->hit(r, interval(record1.t + 0.0001, infinity), record2)) return false;
 
     // 把兩個 record 都 clamp 到 ray_t 範圍內
     if (record1.t < ray_t.min) record1.t = ray_t.min;
@@ -41,15 +39,15 @@ class volumne : public hittable {
     if (hit_distance > distance_inside_boundary) return false;
     record.t = record1.t + hit_distance / ray_length;
     record.p = r.at(record.t);
-    record.normal = vec3(1, 0, 0);  // arbitrary
-    record.front_face = true;       // arbitrary
+    record.normal = vec3(1, 0, 0); // arbitrary
+    record.front_face = true;      // arbitrary
     record.mat = phase_function_;
     return true;
   }
 
   aabb get_bounding_box() const { return boundary_->get_bounding_box(); }
 
- private:
+private:
   std::shared_ptr<hittable> boundary_;
   double density_;
   std::shared_ptr<material> phase_function_;

@@ -7,7 +7,7 @@
 #include "tinyexr/tinyexr.h"
 
 class image {
- public:
+public:
   image() = default;
 
   // Loads image data from the specified file. If the RTW_IMAGES environment
@@ -22,8 +22,7 @@ class image {
 
     if (load_stb(filename)) return;
     if (load_exr(filename)) return;
-    std::cerr << "ERROR: Could not load image file '" << image_filename
-              << "'.\n";
+    std::cerr << "ERROR: Could not load image file '" << image_filename << "'.\n";
   }
 
   ~image() {
@@ -42,8 +41,7 @@ class image {
     // Dummy out parameter: original components per pixel
     bytes_per_pixel = 3;
     auto n = bytes_per_pixel;
-    fdata = stbi_loadf(filename.c_str(), &image_width, &image_height, &n,
-                       bytes_per_pixel);
+    fdata = stbi_loadf(filename.c_str(), &image_width, &image_height, &n, bytes_per_pixel);
     if (fdata == nullptr) return false;
 
     bytes_per_scanline = image_width * bytes_per_pixel;
@@ -53,13 +51,12 @@ class image {
 
   bool load_exr(const std::string &filename) {
     const char *err = nullptr;
-    int ret =
-        LoadEXR(&fdata, &image_width, &image_height, filename.c_str(), &err);
+    int ret = LoadEXR(&fdata, &image_width, &image_height, filename.c_str(), &err);
 
     if (ret != TINYEXR_SUCCESS) {
       if (err) {
         std::cerr << "Error loading EXR file: " << err << std::endl;
-        FreeEXRErrorMessage(err);  // release memory of error message.
+        FreeEXRErrorMessage(err); // release memory of error message.
       }
       return ret;
     }
@@ -84,12 +81,12 @@ class image {
     return bdata + y * bytes_per_scanline + x * bytes_per_pixel;
   }
 
- private:
+private:
   int bytes_per_pixel;
-  float *fdata = nullptr;          // Linear floating point pixel data
-  unsigned char *bdata = nullptr;  // Linear 8-bit pixel data
-  int image_width = 0;             // Loaded image width
-  int image_height = 0;            // Loaded image height
+  float *fdata = nullptr;         // Linear floating point pixel data
+  unsigned char *bdata = nullptr; // Linear 8-bit pixel data
+  int image_width = 0;            // Loaded image width
+  int image_height = 0;           // Loaded image height
   int bytes_per_scanline = 0;
 
   static int clamp(int x, int low, int high) {
@@ -116,7 +113,6 @@ class image {
 
     auto *bptr = bdata;
     auto *fptr = fdata;
-    for (auto i = 0; i < total_bytes; i++, fptr++, bptr++)
-      *bptr = float_to_byte(*fptr);
+    for (auto i = 0; i < total_bytes; i++, fptr++, bptr++) *bptr = float_to_byte(*fptr);
   }
 };

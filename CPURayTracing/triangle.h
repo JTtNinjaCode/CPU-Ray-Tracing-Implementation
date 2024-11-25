@@ -15,7 +15,7 @@ inline vec3 moller_trumbore(ray r, vec3 p0, vec3 p1, vec3 p2) {
 }
 
 class triangle : public hittable {
- public:
+public:
   triangle(vec3 p0, vec3 p1, vec3 p2, std::shared_ptr<material> mat) {
     p0_ = p0;
     p1_ = p1;
@@ -24,13 +24,13 @@ class triangle : public hittable {
     normal_ = unit_vector(cross(p1 - p0, p2 - p0));
   }
 
-  bool hit(const ray& r, interval ray_t, hit_record& record) const {
+  bool hit(const ray &r, interval ray_t, hit_record &record) const {
     vec3 barycentric = moller_trumbore(r, p0_, p1_, p2_);
     double t = barycentric.x();
     double b0 = barycentric.y();
     double b1 = barycentric.z();
     if (t < ray_t.min || t > ray_t.max) return false;
-    // b0 + b1 <= 1，代表點在三角形內
+    // b0 + b1 <= 1 means the point is inside the triangle
     if (b0 < 0 || b1 < 0 || b0 + b1 > 1) return false;
     record.t = t;
     record.p = r.at(t);
@@ -40,16 +40,14 @@ class triangle : public hittable {
   }
 
   aabb get_bounding_box() const {
-    vec3 min = vec3(std::fmin(p0_.x(), std::fmin(p1_.x(), p2_.x())),
-                    std::fmin(p0_.y(), std::fmin(p1_.y(), p2_.y())),
+    vec3 min = vec3(std::fmin(p0_.x(), std::fmin(p1_.x(), p2_.x())), std::fmin(p0_.y(), std::fmin(p1_.y(), p2_.y())),
                     std::fmin(p0_.z(), std::fmin(p1_.z(), p2_.z())));
-    vec3 max = vec3(std::fmax(p0_.x(), std::fmax(p1_.x(), p2_.x())),
-                    std::fmax(p0_.y(), std::fmax(p1_.y(), p2_.y())),
+    vec3 max = vec3(std::fmax(p0_.x(), std::fmax(p1_.x(), p2_.x())), std::fmax(p0_.y(), std::fmax(p1_.y(), p2_.y())),
                     std::fmax(p0_.z(), std::fmax(p1_.z(), p2_.z())));
     return aabb(min, max);
   }
 
- private:
+private:
   vec3 p0_;
   vec3 p1_;
   vec3 p2_;

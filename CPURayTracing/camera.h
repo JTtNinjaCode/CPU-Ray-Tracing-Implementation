@@ -3,9 +3,10 @@
 // 1. Construct and dispatch rays into the world.
 // 2. Use the results of these rays to construct the rendered image.
 
+#include <algorithm>
+#include <execution>
 #include <fstream>
 #include <mutex>
-#include <thread>
 
 #include "hittable.h"
 #include "interval.h"
@@ -13,15 +14,11 @@
 #include "sphere.h"
 #include "utility.h"
 
-enum cameraMode { kPerspective, kOrthnormal, kFisheye, kLens };
+enum camera_mode { kPerspective, kOrthnormal, kFisheye, kLens };
 class camera {
- public:
-  // 初始化 image 的長寬，並且設定 viewport，viewport 的高固定介於 -1 ~ 1 之間
-  void initialize_perspective(int image_width, double aspect_ratio, point3 pos,
-                              vec3 lookat, float focal_length = 1,
-                              float fovy_degree = 90,
-                              int sample_per_pixel = 100,
-                              int max_recur_depth = 5) {
+public:
+  void initialize_perspective(int image_width, double aspect_ratio, point3 pos, vec3 lookat, float focal_length = 1, float fovy_degree = 90,
+                              int sample_per_pixel = 100, int max_recur_depth = 5) {
     mode_ = kPerspective;
     pos_ = pos;
     world_up_ = vec3(0, 1, 0);
@@ -51,10 +48,8 @@ class camera {
     image_.resize(image_width_ * image_height_);
   }
 
-  void initialize_orthnormal(int image_width, double viewport_height,
-                             double aspect_ratio, point3 pos, vec3 lookat,
-                             int sample_per_pixel = 100,
-                             int max_recur_depth = 5) {
+  void initialize_orthnormal(int image_width, double viewport_height, double aspect_ratio, point3 pos, vec3 lookat,
+                             int sample_per_pixel = 100, int max_recur_depth = 5) {
     mode_ = kOrthnormal;
     pos_ = pos;
     world_up_ = vec3(0, 1, 0);
@@ -75,10 +70,8 @@ class camera {
     image_.resize(image_width_ * image_height_);
   }
 
-  void initialize_fisheye(int image_width, double aspect_ratio, point3 pos,
-                          vec3 lookat, float focal_length = 1,
-                          float fovy_degree = 90, int sample_per_pixel = 100,
-                          int max_recur_depth = 5) {
+  void initialize_fisheye(int image_width, double aspect_ratio, point3 pos, vec3 lookat, float focal_length = 1, float fovy_degree = 90,
+                          int sample_per_pixel = 100, int max_recur_depth = 5) {
     mode_ = kFisheye;
     pos_ = pos;
     world_up_ = vec3(0, 1, 0);
@@ -107,12 +100,8 @@ class camera {
     image_.resize(image_width_ * image_height_);
   }
 
-  // defocus_angle 決定鏡片的大小，鏡片的高度等於 2.0 * std::tan(theta / 2.0) *
-  // focus_dist_
-  void initialize_lens(int image_width, float aspect_ratio, point3 pos,
-                       vec3 lookat, float defocus_angle_, float focus_dist = 1,
-                       float fovy_degree = 90, int sample_per_pixel = 100,
-                       int max_recur_depth = 5) {
+  void initialize_lens(int image_width, float aspect_ratio, point3 pos, vec3 lookat, float defocus_angle_, float focus_dist = 1,
+                       float fovy_degree = 90, int sample_per_pixel = 100, int max_recur_depth = 5) {
     mode_ = kLens;
     pos_ = pos;
     world_up_ = vec3(0, 1, 0);
@@ -136,152 +125,119 @@ class camera {
     viewport_width_ = viewport_height_ * (double(image_width_) / image_height_);
     image_.resize(image_width_ * image_height_);
 
-    auto defocus_radius =
-        focus_dist * std::tan(degrees_to_radians(defocus_angle_ / 2));
+    auto defocus_radius = focus_dist * std::tan(degrees_to_radians(defocus_angle_ / 2));
     defocus_disk_u = right_ * defocus_radius;
     defocus_disk_v = up_ * defocus_radius;
   }
 
   // Generate a lot ray and render it, print the result to ofstream
-  void render(std::ofstream& out, const hittable& world) {
+  void render(std::ofstream &out, const hittable &world, const hittable &light) {
     std::cout << "Start to render...\n";
     point3 delta_u = viewport_width_ * right_ / image_width_;
     point3 delta_v = -viewport_height_ * up_ / image_height_;
 
-    point3 ray_dir00 = pos_ + focal_length_ * dir_ -
-                       viewport_width_ / 2.0 * right_ +
-                       viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
+    point3 ray_dir00 =
+        pos_ + focal_length_ * dir_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
 
     int max = 255;
-    if (!out) std::cerr << "Fail to open file.";
+    if (!out) {
+      std::cerr << "Fail to open file.\n";
+      return;
+    }
 
     out << "P3\n";
     out << image_width_ << ' ' << image_height_ << '\n';
     out << max << '\n';
 
-    // 使用單執行緒執行
-    // for (int i = 0; i < image_height_; i++) {
-    //  std::clog << "Write Line:" << i << '\n';
-    //  for (int j = 0; j < image_width_; j++) {
-    //    color pixel_color = color(0);
-    //    for (int k = 0; k < samples_per_pixel_; k++) {
-    //      ray emit_ray = generate_ray(i, j, delta_u, delta_v);
-    //      pixel_color += ray_color(emit_ray, world, max_recur_depth_);
-    //    }
-    //    pixel_color /= samples_per_pixel_;
-    //    image_[i * image_width_ + j] = pixel_color;
-    //  }
-    //}
+    // iota : fill the range [first, last) with sequentially increasing values, starting with value and repetitively evaluating ++value.
+    std::vector<int> row_indices(image_height_);
+    std::iota(row_indices.begin(), row_indices.end(), 0);
 
-    // split the image into multiple threads by image height, but it assume that
-    // the image height is multiple of thread count.
-    std::vector<std::thread> threads;
-    for (size_t i = 0; i < thread_count_; i++) {
-      int begin_height = i * image_height_ / thread_count_;
-      int height_count = image_height_ / thread_count_;
+    // std::execution::par : this will use parallel execution policy
+    std::for_each(std::execution::par_unseq, row_indices.begin(), row_indices.end(), [&](int i) {
+      {
+        std::lock_guard<std::mutex> lock(clog_mux_);
+        std::clog << "Write Line: " << i << '\n';
+      }
+      for (int j = 0; j < image_width_; j++) {
+        color pixel_color(0);
+        for (int k = 0; k < samples_per_pixel_; k++) {
+          ray emit_ray = generate_ray(i, j, delta_u, delta_v);
+          pixel_color += ray_color(emit_ray, world, max_recur_depth_, light);
+        }
+        pixel_color /= samples_per_pixel_;
+        image_[i * image_width_ + j] = pixel_color;
+      }
+    });
 
-      threads.emplace_back(
-          [&](int begin_height, int height_count) {
-            for (int i = begin_height; i < begin_height + height_count; i++) {
-              {
-                std::lock_guard<std::mutex> lock(clog_mux_);
-                std::clog << "Write Line:" << i << '\n';
-              }
-
-              for (int j = 0; j < image_width_; j++) {
-                color pixel_color = color(0);
-                for (int k = 0; k < samples_per_pixel_; k++) {
-                  ray emit_ray = generate_ray(i, j, delta_u, delta_v);
-                  pixel_color += ray_color(emit_ray, world, max_recur_depth_);
-                }
-                pixel_color /= samples_per_pixel_;
-                image_[i * image_width_ + j] = pixel_color;
-              }
-            }
-          },
-          begin_height, height_count);
-    }
-    for (auto& t : threads) t.join();
-
-    // wait until all threads finish
-    std::clog << "done\n";
-    for (size_t i = 0; i < image_.size(); i++) write_color(out, image_[i]);
+    std::for_each(image_.begin(), image_.end(), [&](const color &c) { write_color(out, c); });
+    std::clog << "Done.\n";
   }
 
- private:
-  color hit_skybox(ray r, hit_record& record) const {
+private:
+  color hit_skybox(ray r, hit_record &record) const {
     if (background_) {
       sphere unit_sphere(r.origin(), 1.0f, nullptr);
-      if (unit_sphere.hit(r, interval(0.001, infinity), record))
-        return background_->sample(record.u, record.v, record.p);
+      if (unit_sphere.hit(r, interval(0.001, infinity), record)) return background_->sample(record.u, record.v, record.p);
     }
     return color(0);
   }
 
-  // get a color from a single ray
-  color ray_color(const ray& r, const hittable& world, int iteration) const {
+  // Get a color from a single ray
+  color ray_color(const ray &r, const hittable &world, int iteration, const hittable &light) const {
     if (iteration <= 0) return color(0);
 
     hit_record record;
-    if (!world.hit(r, interval(0.001, infinity), record))
-      return hit_skybox(r, record);
+    if (!world.hit(r, interval(0.001, infinity), record)) return hit_skybox(r, record);
+    // hit object! record is valid, check the material of the object hit
 
-    // 打中了，record 有效，看看打到的物體的 material 是啥，用其 material
-    // 計算下一個 ray 的方向以及碰到的顏色
-    color emission =
-        record.mat->emitted(r, record, record.u, record.v, record.p);
-    ray scattered;
+    color color_from_emission = record.mat->emitted(r, record, record.u, record.v, record.p);
+
+    ray scattered_ray;
     color attenuation;
-    double pdf_value;
+    double pdf_value = 0;
+    if (!record.mat->scatter(r, record, attenuation, scattered_ray, pdf_value)) return color_from_emission;
+    // 以下代表成功 scatter，接著計算下一條 ray 的方向並且得到顏色
 
-    if (record.mat->scatter(r, record, attenuation, scattered, pdf_value)) {
-      double scatter_pdf = record.mat->scattering_pdf(r, record, scattered);
-      color color_from_scatter = (attenuation * scatter_pdf *
-                                  ray_color(scattered, world, iteration - 1)) /
-                                 pdf_value;
+    // determine next ray's direction and corresponding pdf value for importance sampling
+    hittable_pdf toward_light_pdf(light, record.p);
+    scattered_ray = ray(record.p, toward_light_pdf.generate(), r.time());
+    pdf_value = toward_light_pdf.value(scattered_ray.direction());
 
-      return attenuation * ray_color(scattered, world, iteration - 1) +
-             emission;
-    } else {
-      return emission;
-    }
+    // get pScattered value to calculate the color from the scattered ray
+    double p_scattered = record.mat->p_scattered(r, record, scattered_ray);
+    color input_color = ray_color(scattered_ray, world, iteration - 1, light);
+    color color_from_scatter = (attenuation * p_scattered * input_color) / pdf_value; // divide by pdf_value for importance sampling
+    return color_from_scatter + color_from_emission;
   }
 
   ray generate_ray(int y, int x, vec3 delta_u, vec3 delta_v) {
     if (mode_ == kPerspective) {
-      point3 ray_dir00 = focal_length_ * dir_ - viewport_width_ / 2.0 * right_ +
-                         viewport_height_ / 2.0 * up_ +
-                         0.5 * (delta_u + delta_v);
+      point3 ray_dir00 = focal_length_ * dir_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
       point3 ray_dir = ray_dir00 + x * delta_u + y * delta_v;
       vec3 offset = sample_square();
-      point3 rand_ray_dir =
-          ray_dir + offset.x() * delta_u + offset.y() * delta_v;
+      point3 rand_ray_dir = ray_dir + offset.x() * delta_u + offset.y() * delta_v;
       double ray_time = random_double();
       return {pos_, rand_ray_dir, ray_time};
     } else if (mode_ == kOrthnormal) {
-      point3 pos00 = pos_ - viewport_width_ / 2.0 * right_ +
-                     viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
+      point3 pos00 = pos_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
       point3 pos = pos00 + x * delta_u + y * delta_v;
       vec3 offset = sample_square();
       point3 rand_pos = pos + offset.x() * delta_u + offset.y() * delta_v;
       double ray_time = random_double();
       return {rand_pos, dir_, ray_time};
     } else if (mode_ == kFisheye) {
-      point3 ray_dir00 = focal_length_ * dir_ - viewport_width_ / 2.0 * right_ +
-                         viewport_height_ / 2.0 * up_ +
-                         0.5 * (delta_u + delta_v);
+      point3 ray_dir00 = focal_length_ * dir_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
       point3 ray_dir = ray_dir00 + x * delta_u + y * delta_v;
       vec3 offset = sample_square();
-      point3 rand_ray_dir =
-          ray_dir + offset.x() * delta_u + offset.y() * delta_v;
+      point3 rand_ray_dir = ray_dir + offset.x() * delta_u + offset.y() * delta_v;
 
       // https://www.politesi.polimi.it/retrieve/330f59c4-1a55-40fe-a197-bf0f412af6e6/2022_12_Abelli_02.pdf
       double r = (rand_ray_dir - dir_).length();
       double theta = std::asin(r / focal_length_);
       vec3 v1 = unit_vector(dir_);
       vec3 v2 = unit_vector(rand_ray_dir);
-      double b_prime = std::sqrt(std::sin(theta) * std::sin(theta) /
-                                 (1 - dot(v1, v2) * dot(v1, v2)));
+      double b_prime = std::sqrt(std::sin(theta) * std::sin(theta) / (1 - dot(v1, v2) * dot(v1, v2)));
       double a_prime = std::cos(theta) - b_prime * dot(v1, v2);
       vec3 v3 = a_prime * v1 + b_prime * v2;
 
@@ -289,44 +245,35 @@ class camera {
       return {pos_, v3, ray_time};
     } else if (mode_ == kLens) {
       vec3 offset = sample_square();
-      point3 focus_plane00 = pos_ - viewport_width_ / 2.0 * right_ +
-                             viewport_height_ / 2.0 * up_ +
-                             0.5 * (delta_u + delta_v);
-      point3 ray_dir = focus_plane00 + x * delta_u + y * delta_v +
-                       offset.x() * delta_u + offset.y() * delta_v +
-                       focus_dist_ * dir_;
+      point3 focus_plane00 = pos_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
+      point3 ray_dir = focus_plane00 + x * delta_u + y * delta_v + offset.x() * delta_u + offset.y() * delta_v + focus_dist_ * dir_;
       point3 ray_origin = pos_ + sample_defocus_disk();
       ray_dir -= ray_origin;
       return {ray_origin, ray_dir};
     }
   }
 
-  // generate random vec in defocus disk, the defoucs disk's directions are
-  // streched by defocus_disk_u and defocus_disk_v
+  // Generate random vec in defocus disk, the defoucs disk's directions are streched by defocus_disk_u and defocus_disk_v
   vec3 sample_defocus_disk() const {
     auto p = random_in_unit_disk();
     return (p.x() * defocus_disk_u) + (p.y() * defocus_disk_v);
   }
 
-  // generate random vector in little square, forward is z-axis
-  vec3 sample_square() {
-    return vec3(random_double() - 0.5, random_double() - 0.5, 0);
-  }
+  // Generate random vector in little square, forward is z-axis
+  vec3 sample_square() { return vec3(random_double() - 0.5, random_double() - 0.5, 0); }
 
-  // generate random vector in disk with radius r
-  vec3 sample_disk(double radius) const {
-    return radius * random_in_unit_disk();
-  }
+  // Generate random vector in disk with radius r
+  vec3 sample_disk(double radius) const { return radius * random_in_unit_disk(); }
 
- public:
-  cameraMode mode_;
+public:
+  camera_mode mode_ = kPerspective;
   double aspect_ratio_;
   int image_width_;
   int image_height_;
 
   float fovy_degree_;
 
-  int max_recur_depth_ = 50;
+  int max_recur_depth_ = 10;
 
   int samples_per_pixel_;
 
@@ -337,10 +284,8 @@ class camera {
 
   double focus_dist_ = 3.4;
   double defocus_angle_ = 10.0;
-  vec3 defocus_disk_u;  // Defocus disk horizontal direction
-  vec3 defocus_disk_v;  // Defocus disk vertical direction
-
-  int thread_count_ = 8;  // 要求 image 的高度必須是 thread_count 的倍數
+  vec3 defocus_disk_u; // Defocus disk horizontal direction
+  vec3 defocus_disk_v; // Defocus disk vertical direction
 
   point3 pos_;
   vec3 dir_;

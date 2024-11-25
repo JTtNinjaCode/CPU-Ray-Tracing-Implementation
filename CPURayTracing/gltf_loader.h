@@ -87,20 +87,20 @@ namespace gltf {
 #define BUFFERVIEW_TARGET_ARRAY_BUFFER 34962
 #define BUFFERVIEW_TARGET_ELEMENT_ARRAY_BUFFER 34963
 
-#define ACCESOR_COMPONENT_TYPE_SIGNED_BYTE 5120     // 8 bits
-#define ACCESOR_COMPONENT_TYPE_UNSIGNED_BYTE 5121   // 8 bits
-#define ACCESOR_COMPONENT_TYPE_SHORT 5122           // 16 bits
-#define ACCESOR_COMPONENT_TYPE_UNSIGNED_SHORT 5123  // 16 bits
-#define ACCESOR_COMPONENT_TYPE_UNSIGNED_INT 5125    // 32 bits
-#define ACCESOR_COMPONENT_TYPE_FLOAT 5126           // 32 bits
+#define ACCESOR_COMPONENT_TYPE_SIGNED_BYTE 5120    // 8 bits
+#define ACCESOR_COMPONENT_TYPE_UNSIGNED_BYTE 5121  // 8 bits
+#define ACCESOR_COMPONENT_TYPE_SHORT 5122          // 16 bits
+#define ACCESOR_COMPONENT_TYPE_UNSIGNED_SHORT 5123 // 16 bits
+#define ACCESOR_COMPONENT_TYPE_UNSIGNED_INT 5125   // 32 bits
+#define ACCESOR_COMPONENT_TYPE_FLOAT 5126          // 32 bits
 
-#define ACCESOR_TYPE_SCALAR "SCALAR"  // 1 component
-#define ACCESOR_TYPE_VEC2 "VEC2"      // 2 components
-#define ACCESOR_TYPE_VEC3 "VEC3"      // 3 components
-#define ACCESOR_TYPE_VEC4 "VEC4"      // 4 components
-#define ACCESOR_TYPE_MAT2 "MAT2"      // 4 components
-#define ACCESOR_TYPE_MAT3 "MAT3"      // 9 components
-#define ACCESOR_TYPE_MAT4 "MAT4"      // 16 components
+#define ACCESOR_TYPE_SCALAR "SCALAR" // 1 component
+#define ACCESOR_TYPE_VEC2 "VEC2"     // 2 components
+#define ACCESOR_TYPE_VEC3 "VEC3"     // 3 components
+#define ACCESOR_TYPE_VEC4 "VEC4"     // 4 components
+#define ACCESOR_TYPE_MAT2 "MAT2"     // 4 components
+#define ACCESOR_TYPE_MAT3 "MAT3"     // 9 components
+#define ACCESOR_TYPE_MAT4 "MAT4"     // 16 components
 
 #define PRIMITIVE_MODE_POINTS 0
 #define PRIMITIVE_MODE_LINES 1
@@ -121,7 +121,7 @@ struct Node {
   std::vector<int> weights;
 
   float translation[3];
-  float rotation[4];  // w, x, y, z
+  float rotation[4]; // w, x, y, z
   float scale[3];
 
   int camera_index;
@@ -134,11 +134,11 @@ struct Node {
 struct Accessor {
   std::string name;
   int buffer_view_index;
-  int byte_offset;     // default 0
-  int component_type;  // required
-  int count;           // required
-  bool normalized;     // default false
-  std::string type;    // required
+  int byte_offset;    // default 0
+  int component_type; // required
+  int count;          // required
+  bool normalized;    // default false
+  std::string type;   // required
 
   std::vector<float> max;
   std::vector<float> min;
@@ -149,7 +149,7 @@ struct Accessor {
 
 struct Asset {
   std::string generator;
-  std::string copyright;  // required
+  std::string copyright; // required
   std::string version;
   std::string minVersion;
 
@@ -160,7 +160,7 @@ struct Asset {
 struct Buffer {
   std::string name;
   std::string uri;
-  int byte_length;  // required
+  int byte_length; // required
 
   // extensions
   // extras
@@ -177,7 +177,7 @@ struct Attribute {
 // attributes 是指向 accessor 的 index
 struct Primitive {
   Attribute attributes;
-  int mode = 4;  // default 4
+  int mode = 4; // default 4
   int indices_index = -1;
   int material_index = -1;
 };
@@ -189,9 +189,9 @@ struct Mesh {
 struct BufferView {
   std::string name;
   int buffer_index;
-  int byte_offset;  // 在 bin 中的偏移量
-  int byte_length;  // 有多少 byte
-  int byte_stride;  // 一個元素的 byte 長度
+  int byte_offset; // 在 bin 中的偏移量
+  int byte_length; // 有多少 byte
+  int byte_stride; // 一個元素的 byte 長度
   int target;
 
   // extensions
@@ -219,7 +219,7 @@ struct Material {
 
 struct Scene {
   std::string name;
-  std::vector<unsigned int> nodes_index;  // 指向底下的 Node
+  std::vector<unsigned int> nodes_index; // 指向底下的 Node
 };
 
 // source 就是 image 的 index
@@ -245,7 +245,7 @@ struct Image {
   std::vector<unsigned char> data;
 };
 
-#define SAMPLER 00  // 等等用來定義不同種的 mag_filter
+#define SAMPLER 00 // 等等用來定義不同種的 mag_filter
 struct Sampler {
   unsigned int mag_filter;
   unsigned int min_filter;
@@ -254,19 +254,19 @@ struct Sampler {
 };
 
 class GltfLoader {
- public:
+public:
   GltfLoader() = default;
   // 讀出 gltf 檔案的內容，並且轉成 JSON 後解析
-  GltfLoader(const std::string& path) {
+  GltfLoader(const std::string &path) {
     file_path_ = path;
 
     std::ifstream ifs(path, std::ios::binary);
     std::string content;
     if (ifs) {
-      ifs.seekg(0, std::ios::end);            // 讀取指標移動到最後
-      content.resize(ifs.tellg());            // 讀取長度
-      ifs.seekg(0, std::ios::beg);            // 讀取指標移動到最前
-      ifs.read(&content[0], content.size());  // 讀取內容
+      ifs.seekg(0, std::ios::end);           // 讀取指標移動到最後
+      content.resize(ifs.tellg());           // 讀取長度
+      ifs.seekg(0, std::ios::beg);           // 讀取指標移動到最前
+      ifs.read(&content[0], content.size()); // 讀取內容
       ifs.close();
     }
 
@@ -289,11 +289,9 @@ class GltfLoader {
     // loadImage();  // TODO: 使用多執行緒
     loadMesh();
   }
-  std::vector<OutputPrimitives>& getOutputPrimitives() {
-    return output_primitives_;
-  }
+  std::vector<OutputPrimitives> &getOutputPrimitives() { return output_primitives_; }
 
- public:
+public:
   void loadMesh() {
     // Mesh 裡面有許多 primative，每個 primative 也都有 attribute
     // 我要使用 primitive 的 attribute 來取得 accessor 的資料
@@ -304,7 +302,7 @@ class GltfLoader {
     }
   }
 
-  std::vector<OutputPrimitives> loadPrimitives(Mesh& mesh) {
+  std::vector<OutputPrimitives> loadPrimitives(Mesh &mesh) {
     std::vector<OutputPrimitives> results;
     for (int i = 0; i < mesh.primitives.size(); i++) {
       OutputPrimitives output_primitives;
@@ -317,44 +315,43 @@ class GltfLoader {
     return results;
   }
 
-  void loadMode(OutputPrimitives& result, Primitive& primitives) {
+  void loadMode(OutputPrimitives &result, Primitive &primitives) {
     switch (primitives.mode) {
-      case PRIMITIVE_MODE_POINTS:
-        result.mode = PrimitiveMode::kPoints;
-        break;
-      case PRIMITIVE_MODE_LINES:
-        result.mode = PrimitiveMode::kLines;
-        break;
-      case PRIMITIVE_MODE_LINE_LOOP:
-        result.mode = PrimitiveMode::kLineLoop;
-        break;
-      case PRIMITIVE_MODE_LINE_STRIP:
-        result.mode = PrimitiveMode::kLineStrip;
-        break;
-      case PRIMITIVE_MODE_TRIANGLES:
-        result.mode = PrimitiveMode::kTriangles;
-        break;
-      case PRIMITIVE_MODE_TRIANGLE_STRIP:
-        result.mode = PrimitiveMode::kTriangleStrip;
-        break;
-      case PRIMITIVE_MODE_TRIANGLE_FAN:
-        result.mode = PrimitiveMode::kTriangleFan;
-        break;
-      default:
-        throw std::invalid_argument("Unknown primitive mode: " +
-                                    std::to_string(primitives.mode));
+    case PRIMITIVE_MODE_POINTS:
+      result.mode = PrimitiveMode::kPoints;
+      break;
+    case PRIMITIVE_MODE_LINES:
+      result.mode = PrimitiveMode::kLines;
+      break;
+    case PRIMITIVE_MODE_LINE_LOOP:
+      result.mode = PrimitiveMode::kLineLoop;
+      break;
+    case PRIMITIVE_MODE_LINE_STRIP:
+      result.mode = PrimitiveMode::kLineStrip;
+      break;
+    case PRIMITIVE_MODE_TRIANGLES:
+      result.mode = PrimitiveMode::kTriangles;
+      break;
+    case PRIMITIVE_MODE_TRIANGLE_STRIP:
+      result.mode = PrimitiveMode::kTriangleStrip;
+      break;
+    case PRIMITIVE_MODE_TRIANGLE_FAN:
+      result.mode = PrimitiveMode::kTriangleFan;
+      break;
+    default:
+      throw std::invalid_argument("Unknown primitive mode: " + std::to_string(primitives.mode));
     }
   }
-  void loadVertexBuffer(OutputPrimitives& result, Primitive& primitives) {
+  void loadVertexBuffer(OutputPrimitives &result, Primitive &primitives) {
     int pos_accessor_index = primitives.attributes.POSITION;
     int normal_accessor_index = primitives.attributes.NORMAL;
     int uv_accessor_index = primitives.attributes.TEXCOORD_0;
     int tangent_accessor_index = primitives.attributes.TANGENT;
 
-    Accessor* pos_accessor = nullptr;
-    Accessor* normal_accessor = nullptr;
-    Accessor* uv_accessor = nullptr;
-    Accessor* tangent_accessor = nullptr;
+    Accessor *pos_accessor = nullptr;
+    Accessor *normal_accessor = nullptr;
+    Accessor *uv_accessor = nullptr;
+    Accessor *tangent_accessor = nullptr;
 
     if (pos_accessor_index != -1) {
       pos_accessor = &accessors_[pos_accessor_index];
@@ -382,10 +379,10 @@ class GltfLoader {
     }
   }
 
-  void loadIndexBuffer(OutputPrimitives& result, Primitive& primitives) {
+  void loadIndexBuffer(OutputPrimitives &result, Primitive &primitives) {
     int indices_index = primitives.indices_index;
     if (indices_index != -1) {
-      Accessor* indices_accessor = &accessors_[indices_index];
+      Accessor *indices_accessor = &accessors_[indices_index];
       result.indices = loadDataByAccessor(*indices_accessor);
       result.indices_type = getComponentType(indices_accessor->component_type);
       result.use_indices = true;
@@ -396,13 +393,11 @@ class GltfLoader {
 
   void loadImage() {
     for (unsigned int i = 0; i < images_.size(); i++) {
-      std::string file_dir =
-          file_path_.substr(0, file_path_.find_last_of("/") + 1);
+      std::string file_dir = file_path_.substr(0, file_path_.find_last_of("/") + 1);
 
-      auto& img = images_[i];
+      auto &img = images_[i];
       std::string path = file_dir + img.uri;
-      stbi_uc* data =
-          stbi_load(path.c_str(), &img.width, &img.height, &img.nrChannels, 0);
+      stbi_uc *data = stbi_load(path.c_str(), &img.width, &img.height, &img.nrChannels, 0);
       if (data) {
         img.data.resize(img.width * img.height * img.nrChannels);
         memcpy(img.data.data(), data, img.width * img.height * img.nrChannels);
@@ -551,15 +546,11 @@ class GltfLoader {
     std::vector<Mesh> meshes;
     for (unsigned int i = 0; i < json_["meshes"].size(); i++) {
       Mesh mesh;
-      for (unsigned int j = 0; j < json_["meshes"][i]["primitives"].size();
-           j++) {
+      for (unsigned int j = 0; j < json_["meshes"][i]["primitives"].size(); j++) {
         Primitive primitive;
-        primitive.attributes =
-            getAttribute(json_["meshes"][i]["primitives"][j]["attributes"]);
-        primitive.indices_index =
-            json_["meshes"][i]["primitives"][j].value("indices", -1);
-        primitive.material_index =
-            json_["meshes"][i]["primitives"][j].value("material", -1);
+        primitive.attributes = getAttribute(json_["meshes"][i]["primitives"][j]["attributes"]);
+        primitive.indices_index = json_["meshes"][i]["primitives"][j].value("indices", -1);
+        primitive.material_index = json_["meshes"][i]["primitives"][j].value("material", -1);
         primitive.mode = json_["meshes"][i]["primitives"][j].value("mode", 4);
         mesh.primitives.push_back(primitive);
       }
@@ -571,21 +562,19 @@ class GltfLoader {
   // 取得 .bin 的資料
   std::vector<char> loadData() {
     std::string byte_text;
-    std::string uri =
-        json_["buffers"][0]["uri"];  // 取得 .bin 的路徑，這是二進位的
+    std::string uri = json_["buffers"][0]["uri"]; // 取得 .bin 的路徑，這是二進位的
 
-    std::string file_dir =
-        file_path_.substr(0, file_path_.find_last_of("/") + 1);
+    std::string file_dir = file_path_.substr(0, file_path_.find_last_of("/") + 1);
     std::string bin_path = file_dir + "/" + uri;
 
     std::ifstream ifs(bin_path, std::ios::binary);
 
     std::vector<char> data;
     if (ifs) {
-      ifs.seekg(0, std::ios::end);      // 讀取指標移動到最後
-      data.resize(ifs.tellg());         // 讀取長度
-      ifs.seekg(0, std::ios::beg);      // 讀取指標移動到最前
-      ifs.read(&data[0], data.size());  // 讀取內容
+      ifs.seekg(0, std::ios::end);     // 讀取指標移動到最後
+      data.resize(ifs.tellg());        // 讀取長度
+      ifs.seekg(0, std::ios::beg);     // 讀取指標移動到最前
+      ifs.read(&data[0], data.size()); // 讀取內容
       ifs.close();
     }
 
@@ -607,7 +596,7 @@ class GltfLoader {
   }
 
   // accessor.type 有多少個 component
-  int getComponentCount(const std::string& accessor_type) {
+  int getComponentCount(const std::string &accessor_type) {
     if (accessor_type == ACCESOR_TYPE_SCALAR) {
       return 1;
     } else if (accessor_type == ACCESOR_TYPE_VEC2) {
@@ -629,18 +618,14 @@ class GltfLoader {
 
   // accessor.component_type 一個 component 有幾個 byte
   int getComponentByte(int component_type) {
-    if (component_type == ACCESOR_COMPONENT_TYPE_SIGNED_BYTE ||
-        component_type == ACCESOR_COMPONENT_TYPE_UNSIGNED_BYTE) {
+    if (component_type == ACCESOR_COMPONENT_TYPE_SIGNED_BYTE || component_type == ACCESOR_COMPONENT_TYPE_UNSIGNED_BYTE) {
       return 1;
-    } else if (component_type == ACCESOR_COMPONENT_TYPE_SHORT ||
-               component_type == ACCESOR_COMPONENT_TYPE_UNSIGNED_SHORT) {
+    } else if (component_type == ACCESOR_COMPONENT_TYPE_SHORT || component_type == ACCESOR_COMPONENT_TYPE_UNSIGNED_SHORT) {
       return 2;
-    } else if (component_type == ACCESOR_COMPONENT_TYPE_UNSIGNED_INT ||
-               component_type == ACCESOR_COMPONENT_TYPE_FLOAT) {
+    } else if (component_type == ACCESOR_COMPONENT_TYPE_UNSIGNED_INT || component_type == ACCESOR_COMPONENT_TYPE_FLOAT) {
       return 4;
     } else {
-      throw std::invalid_argument("Unknown component type: " +
-                                  std::to_string(component_type));
+      throw std::invalid_argument("Unknown component type: " + std::to_string(component_type));
     }
   }
 
@@ -658,17 +643,15 @@ class GltfLoader {
     } else if (component_type == ACCESOR_COMPONENT_TYPE_FLOAT) {
       return DataType::kFloat;
     } else {
-      throw std::invalid_argument("Unknown component type: " +
-                                  std::to_string(component_type));
+      throw std::invalid_argument("Unknown component type: " + std::to_string(component_type));
     }
   }
 
   // 透過 accessor 取得某一種 attribute 的內容，buffer 內是 little endian
-  std::vector<uint8_t> loadDataByAccessor(Accessor& accessor) {
+  std::vector<uint8_t> loadDataByAccessor(Accessor &accessor) {
     std::vector<uint8_t> results;
     // attribute 的總資料量
-    int lenght = accessor.count * getComponentCount(accessor.type) *
-                 getComponentByte(accessor.component_type);
+    int lenght = accessor.count * getComponentCount(accessor.type) * getComponentByte(accessor.component_type);
     results.resize(lenght);
 
     BufferView buffer_view = buffer_views_[accessor.buffer_view_index];
@@ -680,12 +663,11 @@ class GltfLoader {
     // 總資料長度: 一個 vertex 有幾個 component * 一個 component 有幾個 byte *
     // 有多少個 vertex
 
-    if (buffer_view.byte_stride == 0) {  // 同一種 attribute 連續存放
+    if (buffer_view.byte_stride == 0) { // 同一種 attribute 連續存放
       memcpy(results.data(), data_.data() + beginning_offset, lenght);
-    } else {  // 同一種 attribute 不連續存放
+    } else { // 同一種 attribute 不連續存放
       for (int i = 0; i < lenght; i += buffer_view.byte_stride) {
-        memcpy(results.data() + i, data_.data() + beginning_offset + i,
-               buffer_view.byte_stride);
+        memcpy(results.data() + i, data_.data() + beginning_offset + i, buffer_view.byte_stride);
       }
     }
 
@@ -738,8 +720,7 @@ class GltfLoader {
 
       // 取得 PBRMetallicRoughness 的資料
       if (json_["materials"][i].contains("pbrMetallicRoughness")) {
-        material.pbr_metallic_roughness = getMatPBRMetallicRoughness(
-            json_["materials"][i]["pbrMetallicRoughness"]);
+        material.pbr_metallic_roughness = getMatPBRMetallicRoughness(json_["materials"][i]["pbrMetallicRoughness"]);
       }
       materials.push_back(material);
     }
@@ -747,15 +728,13 @@ class GltfLoader {
   }
 
   // 以下都是 Material 的衍伸函數
-  MatPBRMetallicRoughness getMatPBRMetallicRoughness(
-      json pbr_metallic_roughness) {
+  MatPBRMetallicRoughness getMatPBRMetallicRoughness(json pbr_metallic_roughness) {
     MatPBRMetallicRoughness result;
 
     // 取得 baseColorFactor 的資料
     if (pbr_metallic_roughness.contains("baseColorFactor")) {
       auto base_color_factor_array = pbr_metallic_roughness["baseColorFactor"];
-      if (base_color_factor_array.is_array() &&
-          base_color_factor_array.size() == 4) {
+      if (base_color_factor_array.is_array() && base_color_factor_array.size() == 4) {
         result.base_color_factor[0] = base_color_factor_array[0].get<float>();
         result.base_color_factor[1] = base_color_factor_array[1].get<float>();
         result.base_color_factor[2] = base_color_factor_array[2].get<float>();
@@ -764,13 +743,11 @@ class GltfLoader {
     }
 
     if (pbr_metallic_roughness.contains("baseColorTexture")) {
-      result.base_color_texture_index =
-          pbr_metallic_roughness["baseColorTexture"].value("index", -1);
+      result.base_color_texture_index = pbr_metallic_roughness["baseColorTexture"].value("index", -1);
     }
 
     if (pbr_metallic_roughness.contains("metallicRoughnessTexture")) {
-      result.base_color_texture_index =
-          pbr_metallic_roughness["metallicRoughnessTexture"].value("index", -1);
+      result.base_color_texture_index = pbr_metallic_roughness["metallicRoughnessTexture"].value("index", -1);
     }
 
     if (pbr_metallic_roughness.contains("metallicFactor")) {
@@ -811,7 +788,7 @@ class GltfLoader {
     return accessors;
   }
 
- private:
+private:
   unsigned int default_scene_ = 0;
   Asset asset_;
   std::vector<Accessor> accessors_;
@@ -828,8 +805,8 @@ class GltfLoader {
   std::vector<OutputPrimitives> output_primitives_;
 
   std::string file_path_;
-  std::vector<char> data_;  // 儲存頂點座標、法向量、UV 等資料
+  std::vector<char> data_; // 儲存頂點座標、法向量、UV 等資料
   json json_;
 };
 
-}  // namespace gltf
+} // namespace gltf

@@ -3,8 +3,9 @@
 #include <vector>
 
 #include "hittable.h"
+#include "pdf.h"
 class hittable_list : public hittable {
- public:
+public:
   std::vector<std::shared_ptr<hittable>> objects;
 
   hittable_list() = default;
@@ -16,10 +17,10 @@ class hittable_list : public hittable {
   }
 
   // 跑過所有的 object，得到 hit 最近的點
-  bool hit(const ray& r, interval interval, hit_record& rec) const override {
+  bool hit(const ray &r, interval interval, hit_record &rec) const override {
     hit_record temp_rec;
     bool hit_anything = false;
-    for (const auto& object : objects) {
+    for (const auto &object : objects) {
       if (object->hit(r, interval, temp_rec)) {
         hit_anything = true;
         interval.max = temp_rec.t;
@@ -31,6 +32,19 @@ class hittable_list : public hittable {
 
   aabb get_bounding_box() const override { return box_; }
 
- private:
+private:
   aabb box_;
+};
+
+class hittable_pdf : public pdf {
+public:
+  hittable_pdf(const hittable &objects, const point3 &origin) : objects_(objects), origin_(origin) {}
+
+  double value(const vec3 &direction) const override { return objects_.pdf_value(origin_, direction); }
+
+  vec3 generate() const override { return objects_.random(origin_); }
+
+private:
+  point3 origin_;
+  const hittable &objects_;
 };

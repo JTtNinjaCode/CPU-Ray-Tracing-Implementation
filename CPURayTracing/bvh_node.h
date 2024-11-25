@@ -9,15 +9,13 @@
 // 他們都可以構成 BVH Tree
 // BVH Tree 的元素可以有 BVH Node 以及 Sphere 等物件，因為他們都是 hittable
 class bvh_node : public hittable {
- public:
-  bvh_node(hittable_list list)
-      : bvh_node(list.objects, 0, list.objects.size()) {
+public:
+  bvh_node(hittable_list list) : bvh_node(list.objects, 0, list.objects.size()) {
     {}
   }
 
   // 負責把一堆 hittable object 建構成 BVH，begin_i, end_i 是前閉後開
-  bvh_node(std::vector<std::shared_ptr<hittable>>& objects, size_t begin_i,
-           size_t end_i) {
+  bvh_node(std::vector<std::shared_ptr<hittable>> &objects, size_t begin_i, size_t end_i) {
     //  0 代表以 x 分，1 代表以 y 分，2 代表以 z 分
     // int split_index = random_int(0, 3);
     int split_index = 0;
@@ -48,13 +46,12 @@ class bvh_node : public hittable {
     box_ = aabb::enclose(left_->get_bounding_box(), right_->get_bounding_box());
   }
 
-  bool hit(const ray& r, interval ray_t, hit_record& record) const override {
-    // 如果打到最大的 box，接著檢查是否有打到裡面的小的 box or object
+  bool hit(const ray &r, interval ray_t, hit_record &record) const override {
     if (box_.hit(r, ray_t)) {
       bool hit_left = left_->hit(r, ray_t, record);
       // 如果碰到了，會更新 record.t
-      auto updatee_ray_t = interval(ray_t.min, hit_left ? record.t : ray_t.max);
-      bool hit_right = right_->hit(r, updatee_ray_t, record);
+      auto update_ray_t = interval(ray_t.min, hit_left ? record.t : ray_t.max);
+      bool hit_right = right_->hit(r, update_ray_t, record);
 
       return hit_left || hit_right;
     };
@@ -62,7 +59,7 @@ class bvh_node : public hittable {
   }
   aabb get_bounding_box() const override { return box_; }
 
- private:
+private:
   std::shared_ptr<hittable> left_;
   std::shared_ptr<hittable> right_;
   aabb box_;

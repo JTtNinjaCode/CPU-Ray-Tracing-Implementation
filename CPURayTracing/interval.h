@@ -2,17 +2,17 @@
 #include "utility.h"
 
 class interval {
- public:
+public:
   double min;
   double max;
-  // default interval is empty
+  // Default interval is empty
   interval() : min(infinity), max(-infinity) {}
   interval(double min, double max) : min(min), max(max) {}
 
   double size() const { return max - min; }
-  // 閉區間
+  // Closed interval
   bool is_contains(double x) const { return min <= x && x <= max; }
-  // 開區間
+  // Open interval
   bool is_surrounds(double x) const { return min < x && x < max; }
 
   double clamp(double x) const {
@@ -21,15 +21,13 @@ class interval {
     return x;
   }
 
-  // 產生當前 interval 的擴展，前後各擴展 delta 的一半
+  // Produce the interval that is expanded by delta on both sides
   interval expand(double delta) const {
     auto padding = delta / 2;
     return interval(min - padding, max + padding);
   }
 
-  interval offset(double offset) const {
-    return interval(min + offset, max + offset);
-  }
+  interval offset(double offset) const { return interval(min + offset, max + offset); }
 
   static const interval empty, universe;
   static interval enclose(interval i1, interval i2) {

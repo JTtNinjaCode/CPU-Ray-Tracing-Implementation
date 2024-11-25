@@ -3,6 +3,7 @@
 
 #include "hittable.h"
 #include "onb.h"
+#include "pdf.h"
 #include "ray.h"
 #include "spectrum.h"
 #include "texture.h"
@@ -23,96 +24,75 @@
 // Scattering）：這是一種特殊的散射，發生在光線穿透物體表面後在內部被多次散射，再次從表面逃逸的現象。這在模擬半透明材質（如皮膚、大理石、生魚片）時非常重要
 
 class material {
- public:
+public:
   virtual ~material() {}
   // [out] scattered, attenuation, pdf
-  // scatter 代表光發生散射、折射出去，但有也可能被吸收，return bool
-  // 就代表是否該條 ray 有成功 scatter 出去 or 被吸收，抽樣出的 ray 會對應一個
-  // pdf value
-  virtual bool scatter(const ray& r_in, const hit_record& record,
-                       color& attenuation, ray& scattered, double& pdf) const {
+  // ray 已經碰到 object，接著決定下一條 ray
+  // 要往哪散射或被吸收（根據回傳值決定是否有效），決定下一條 ray 往哪裡射是由
+  // material 決定的，pdf 表示建議使用的抽樣方式的機率密度函數
+  virtual bool scatter(const ray &r_in, const hit_record &record, color &attenuation, ray &scattered, double &pdf) const { return false; }
+
+  // pScatter 的值，表示 input radiance 會被散射到特定方向的強度
+  virtual double p_scattered(const ray &r_in, const hit_record &rec, const ray &scattered) const { return 0; }
+
+  virtual color emitted(const ray &r_in, const hit_record &rec, double u, double v, const point3 &p) const { return color(0); }
+
+  virtual bool spectrum_scatter(const ray &r_in, const hit_record &record, spectrum &attenuation, ray &scattered, double &pdf) const {
     return false;
   }
 
-  virtual double scattering_pdf(const ray& r_in, const hit_record& rec,
-                                const ray& scattered) const {
-    return 0;
-  }
-
-  virtual color emitted(const ray& r_in, const hit_record& rec, double u,
-                        double v, const point3& p) const {
-    return color(0);
-  }
-
-  virtual bool spectrum_scatter(const ray& r_in, const hit_record& record,
-                                spectrum& attenuation, ray& scattered,
-                                double& pdf) const {
-    return false;
-  }
-
-  virtual spectrum spectrum_emitted(double u, double v, const point3& p) const {
-    return spectrum();
-  }
+  virtual spectrum spectrum_emitted(double u, double v, const point3 &p) const { return spectrum(); }
 };
 
 class lambertian : public material {
- public:
+public:
   lambertian(std::shared_ptr<texture> albedo) { tex_ = albedo; }
   lambertian(color albedo) { tex_ = std::make_shared<solid_color>(albedo); }
 
-  // [out] scattered, attenuation
-  virtual bool scatter(const ray& r_in, const hit_record& record,
-                       color& attenuation, ray& scattered,
-                       double& pdf) const override {
-    //onb uvw(record.normal);
-    //auto scatter_direction = uvw.transform(random_cosine_direction());
-    //scattered = ray(record.p, unit_vector(scatter_direction), r_in.time());
-    //attenuation = tex_->sample(record.u, record.v, record.p);
-    //pdf = dot(uvw.y, scattered.direction()) / pi;
-
-    auto scatter_direction = record.normal + random_uint_vec();
-    if (scatter_direction.near_zero()) scatter_direction = record.normal;
-    scattered = ray(record.p, scatter_direction, r_in.time());
+  virtual bool scatter(const ray &r_in, const hit_record &record, color &attenuation, ray &scattered, double &pdf) const override {
+    onb uvw(record.normal);
+    auto scatter_direction = uvw.transform(random_cosine_direction());
+    scattered = ray(record.p, unit_vector(scatter_direction), r_in.time());
     attenuation = tex_->sample(record.u, record.v, record.p);
+    pdf = dot(uvw.y, scattered.direction()) / pi;
+
+    // auto scatter_direction = record.normal + random_uint_vec();
+    // if (scatter_direction.near_zero()) scatter_direction = record.normal;
+    // scattered = ray(record.p, scatter_direction, r_in.time());
+    // attenuation = tex_->sample(record.u, record.v, record.p);
     return true;
   }
 
-  double scattering_pdf(const ray& r_in, const hit_record& rec,
-                        const ray& scattered) const override {
-    return 1 / (2 * pi);
+  double p_scattered(const ray &r_in, const hit_record &rec, const ray &scattered) const override {
+    auto cosine = dot(rec.normal, unit_vector(scattered.direction()));
+    return cosine < 0 ? 0 : cosine / pi;
   }
 
- private:
+private:
   std::shared_ptr<texture> tex_;
 };
 
-// 反射
 class metal : public material {
- public:
-  metal(std::shared_ptr<texture> albedo, float fuzz) : tex_(albedo) {
-    fuzz_ = interval(0, 1).clamp(fuzz);
-  }
-  // [out] scattered, attenuation
-  virtual bool scatter(const ray& r_in, const hit_record& record,
-                       color& attenuation, ray& scattered,
-                       double& pdf) const override {
-    auto scatter_direction =
-        unit_vector(reflect(r_in.direction(), record.normal));
-    scatter_direction += fuzz_ * random_uint_vec();
+public:
+  metal(std::shared_ptr<texture> albedo, float fuzz) : tex_(albedo) { fuzz_ = interval(0, 1).clamp(fuzz); }
+  virtual bool scatter(const ray &r_in, const hit_record &record, color &attenuation, ray &scattered, double &pdf) const override {
+    auto scatter_direction = unit_vector(reflect(r_in.direction(), record.normal));
+    scatter_direction += fuzz_ * random_unit_vec();
     scattered = ray(record.p, scatter_direction, r_in.time());
     attenuation = tex_->sample(record.u, record.v, record.p);
-    // 如果 fuzz 半徑太大，會導致向量往內部射，此時要回傳 false 表示沒有 scatter
+    // if fuzz's radius is too large, the vector will shoot into the object, so we need to make sure that vector is the same direction as
+    // the normal
     return (dot(scattered.direction(), record.normal) > 0);
   }
 
- private:
+private:
   std::shared_ptr<texture> tex_;
   float fuzz_;
 };
 
 // 以折射率決定怎麼散射，折射率要大於 1 才有機會會發生全反射
 class dielectric : public material {
- public:
+public:
   dielectric(std::shared_ptr<texture> albedo, float refract) {
     tex_ = albedo;
     refract_ = refract;
@@ -124,9 +104,8 @@ class dielectric : public material {
   }
 
   // [out] scattered, attenuation
-  virtual bool scatter(const ray& r_in, const hit_record& record,
-                       color& attenuation, ray& scattered,
-                       double& pdf) const override {
+  virtual bool scatter(const ray &r_in, const hit_record &record, color &attenuation, ray &scattered, double &pdf) const override {
+    pdf = 1;
     attenuation = tex_->sample(record.u, record.v, record.p);
     // 折射率定義: 外/內，如果發現是從內部方向來的光則要倒數
     double ri = record.front_face ? (1.0 / refract_) : refract_;
@@ -147,7 +126,9 @@ class dielectric : public material {
     return true;
   }
 
- private:
+  double p_scattered(const ray &r_in, const hit_record &rec, const ray &scattered) const override { return 1; }
+
+private:
   // Use Schlick's approximation for reflectance. just a magic formula.
   static double reflectance(double cosine, double refraction_index) {
     auto r0 = (1 - refraction_index) / (1 + refraction_index);
@@ -159,98 +140,82 @@ class dielectric : public material {
   float refract_;
 };
 
-// 往360 度各種方向散射
 class isotropic : public material {
- public:
-  isotropic(const color& albedo) {
-    tex_ = std::make_shared<solid_color>(albedo);
-  }
+public:
+  isotropic(const color &albedo) { tex_ = std::make_shared<solid_color>(albedo); }
 
   isotropic(std::shared_ptr<texture> tex) : tex_(tex) {}
 
-  bool scatter(const ray& r_in, const hit_record& rec, color& attenuation,
-               ray& scattered, double& pdf) const override {
-    scattered = ray(rec.p, random_uint_vec(), r_in.time());
+  bool scatter(const ray &r_in, const hit_record &rec, color &attenuation, ray &scattered, double &pdf) const override {
+    scattered = ray(rec.p, random_unit_vec(), r_in.time());
     attenuation = tex_->sample(rec.u, rec.v, rec.p);
     pdf = 1 / (4 * pi);
     return true;
   }
 
-  double scattering_pdf(const ray& r_in, const hit_record& rec,
-                        const ray& scattered) const override {
-    return 1 / (4 * pi);
-  }
+  double p_scattered(const ray &r_in, const hit_record &rec, const ray &scattered) const override { return 1 / (4 * pi); }
 
- private:
+private:
   std::shared_ptr<texture> tex_;
 };
 
 class diffuse_light : public material {
- public:
+public:
   diffuse_light(std::shared_ptr<texture> tex_) : tex_(tex_) {}
   diffuse_light(color albedo) { tex_ = std::make_shared<solid_color>(albedo); }
 
-  color emitted(const ray& r_in, const hit_record& record, double u, double v,
-                const point3& p) const override {
+  color emitted(const ray &r_in, const hit_record &record, double u, double v, const point3 &p) const override {
     if (!record.front_face) return color(0, 0, 0);
     return tex_->sample(u, v, p);
   }
 
- private:
+private:
   std::shared_ptr<texture> tex_;
 };
 
 // spectrum 版本
 class spectrum_lambertian : public material {
- public:
-  spectrum_lambertian(const spectrum& albedo) : albedo_(albedo) {}
+public:
+  spectrum_lambertian(const spectrum &albedo) : albedo_(albedo) {}
 
   // [out] scattered, attenuation
-  bool spectrum_scatter(const ray& r_in, const hit_record& record,
-                        spectrum& attenuation, ray& scattered,
-                        double& pdf) const override {
-    auto scatter_direction = record.normal + random_uint_vec();
+  bool spectrum_scatter(const ray &r_in, const hit_record &record, spectrum &attenuation, ray &scattered, double &pdf) const override {
+    auto scatter_direction = record.normal + random_unit_vec();
     if (scatter_direction.near_zero()) scatter_direction = record.normal;
     scattered = ray(record.p, scatter_direction, r_in.time());
-    attenuation = albedo_;  // Use spectrum instead of color
+    attenuation = albedo_; // Use spectrum instead of color
     return true;
   }
 
-  double scattering_pdf(const ray& r_in, const hit_record& rec,
-                        const ray& scattered) const override {
+  double p_scattered(const ray &r_in, const hit_record &rec, const ray &scattered) const override {
     auto cos_theta = dot(rec.normal, unit_vector(scattered.direction()));
     return cos_theta < 0 ? 0 : cos_theta / pi;
   }
 
- private:
+private:
   spectrum albedo_;
 };
 
 class spectrum_diffuse_light : public material {
- public:
-  spectrum_diffuse_light(const spectrum& albedo) : albedo_(albedo) {}
+public:
+  spectrum_diffuse_light(const spectrum &albedo) : albedo_(albedo) {}
 
-  spectrum spectrum_emitted(double u, double v,
-                            const point3& p) const override {
-    return albedo_;
-  }
+  spectrum spectrum_emitted(double u, double v, const point3 &p) const override { return albedo_; }
 
- private:
+private:
   spectrum albedo_;
 };
 
 // 根據不同的波長使用不同的折射率，使用柯西色散公式
 class spectrum_dielectric : public material {
- public:
+public:
   spectrum_dielectric(double a, double b) {
     a_ = a;
     b_ = b;
   }
 
   // [out] scattered, attenuation
-  bool spectrum_scatter(const ray& r_in, const hit_record& record,
-                        spectrum& attenuation, ray& scattered,
-                        double& pdf) const override {
+  bool spectrum_scatter(const ray &r_in, const hit_record &record, spectrum &attenuation, ray &scattered, double &pdf) const override {
     attenuation = spectrum();
     // 折射率定義: 外/內，如果發現是從內部方向來的光則要倒數
     for (int i = 0; i < spectrum::size(); i++) {
@@ -275,7 +240,7 @@ class spectrum_dielectric : public material {
     return true;
   }
 
- private:
+private:
   // Use Schlick's approximation for reflectance. just a magic.
   static double reflectance(double cosine, double refraction_index) {
     auto r0 = (1 - refraction_index) / (1 + refraction_index);
@@ -285,5 +250,5 @@ class spectrum_dielectric : public material {
 
   double cauchy(double lambda) const { return a_ + b_ / (pow(lambda, 2)); }
 
-  double a_, b_;  // 柯西色散公式的參數
+  double a_, b_; // 柯西色散公式的參數
 };
