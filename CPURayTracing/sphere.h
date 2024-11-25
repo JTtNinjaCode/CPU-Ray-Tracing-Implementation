@@ -62,26 +62,35 @@ public:
       }
     }
 
-    // then fill the hit_record
+    // Fill the hit_record
     record.t = root;
     record.p = r.at(root);
     vec3 outward_normal = (record.p - center_) / radius_;
-    get_sphere_uv(record, outward_normal);
+    get_sphere_uv(outward_normal, record.u, record.v);
     record.set_face_normal(r, outward_normal);
     record.mat = mat_;
     return true;
   }
 
+  double pdf_value(const point3 &origin, const vec3 &direction) const {
+    return radius_ * radius_ * pi / (origin - center_).length_squared();
+  }
+
+  // origin 往 hittable 的方向上產生隨機的 direction
+  vec3 random(const point3 &origin) const { return random_in_unit_sphere() * radius_; }
+
   vec3 get_center_by_time(double time) const { return begin_center_ + time * (end_center_ - begin_center_); }
 
-  // [out] u, v, v 角度從 -y 到 y 軸， u 角度從 -x -> z -> x -> -z -> -x
-  void get_sphere_uv(hit_record &record, vec3 normal) const {
-    vec3 project_u_vec = unit_vector(vec3(normal.x(), 0, normal.z()));
-    double u = std::acos(dot(project_u_vec, vec3(-1, 0, 0))) / pi;
-    if (project_u_vec.z() < 0) u = -u + 2;
-    u = u / 2.0;
-    record.u = u;
-    record.v = std::acos(dot(normal, vec3(0, -1, 0))) / pi;
+  // [out] u, v
+  // Calculates the texture coordinates (u, v) for a point on a sphere based on its normal vector.
+  // The u coordinate is computed based on the projection of the normal vector onto the xz-plane,
+  // and the v coordinate is calculated using the angle between the normal and the negative y-axis.
+  // v 角度從 -y 到 y 軸， u 角度從 -x -> z -> x -> -z -> -x
+  void get_sphere_uv(const point3 &p, double &u, double &v) const {
+    auto theta = std::acos(-p.y());
+    auto phi = std::atan2(-p.z(), p.x()) + pi;
+    u = phi / (2 * pi);
+    v = theta / pi;
   }
 
 private:

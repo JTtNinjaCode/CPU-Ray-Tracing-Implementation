@@ -11,6 +11,7 @@
 #include "hittable.h"
 #include "interval.h"
 #include "material.h"
+#include "pdf.h"
 #include "sphere.h"
 #include "utility.h"
 
@@ -130,8 +131,8 @@ public:
     defocus_disk_v = up_ * defocus_radius;
   }
 
-  // Generate a lot ray and render it, print the result to ofstream
-  void render(std::ofstream &out, const hittable &world, const hittable &light) {
+  // If light is not nullptr, then we will use importance sampling
+  void render(std::ofstream &out, const hittable &world, const std::shared_ptr<const hittable> light = nullptr) {
     std::cout << "Start to render...\n";
     point3 delta_u = viewport_width_ * right_ / image_width_;
     point3 delta_v = -viewport_height_ * up_ / image_height_;
@@ -184,7 +185,7 @@ private:
   }
 
   // Get a color from a single ray
-  color ray_color(const ray &r, const hittable &world, int iteration, const hittable &light) const {
+  color ray_color(const ray &r, const hittable &world, int iteration, const std::shared_ptr<const hittable> light) const {
     if (iteration <= 0) return color(0);
 
     hit_record record;
@@ -193,22 +194,42 @@ private:
 
     color color_from_emission = record.mat->emitted(r, record, record.u, record.v, record.p);
 
-    ray scattered_ray;
-    color attenuation;
+    scatter_record scatter_record;
     double pdf_value = 0;
-    if (!record.mat->scatter(r, record, attenuation, scattered_ray, pdf_value)) return color_from_emission;
+    if (!record.mat->scatter(r, record, scatter_record)) return color_from_emission;
     // 以下代表成功 scatter，接著計算下一條 ray 的方向並且得到顏色
 
-    // determine next ray's direction and corresponding pdf value for importance sampling
-    hittable_pdf toward_light_pdf(light, record.p);
-    scattered_ray = ray(record.p, toward_light_pdf.generate(), r.time());
-    pdf_value = toward_light_pdf.value(scattered_ray.direction());
+    if (scatter_record.mode == scatter_mode::kDetermined) {
+      ray scattered_ray = scatter_record.ray_scattered;
+      color input_color = ray_color(scattered_ray, world, iteration - 1, light);
+      return scatter_record.attenuation * input_color + color_from_emission;
+    }
 
-    // get pScattered value to calculate the color from the scattered ray
-    double p_scattered = record.mat->p_scattered(r, record, scattered_ray);
-    color input_color = ray_color(scattered_ray, world, iteration - 1, light);
-    color color_from_scatter = (attenuation * p_scattered * input_color) / pdf_value; // divide by pdf_value for importance sampling
-    return color_from_scatter + color_from_emission;
+    // scatter_record.mode == scatter_mode::kRandom
+    if (light == nullptr) { // not importance sampling
+      auto pdf = scatter_record.pdf;
+      ray scattered_ray = ray(record.p, pdf->generate(), r.time());
+      pdf_value = pdf->value(scattered_ray.direction());
+
+      // get pScattered value to calculate the color from the scattered ray
+      double p_scattered = record.mat->p_scattered(r, record, scattered_ray);
+      color input_color = ray_color(scattered_ray, world, iteration - 1, light);
+      color color_from_scatter = (scatter_record.attenuation * p_scattered * input_color) / pdf_value;
+      return color_from_scatter + color_from_emission;
+    } else { // importance sampling
+      auto p0 = std::make_shared<hittable_pdf>(*light, record.p);
+      auto p1 = scatter_record.pdf;
+
+      dual_pdf dual_pdf(p0, p1);
+      ray scattered_ray = ray(record.p, dual_pdf.generate(), r.time());
+      pdf_value = dual_pdf.value(scattered_ray.direction());
+
+      // get pScattered value to calculate the color from the scattered ray
+      double p_scattered = record.mat->p_scattered(r, record, scattered_ray);
+      color input_color = ray_color(scattered_ray, world, iteration - 1, light);
+      color color_from_scatter = (scatter_record.attenuation * p_scattered * input_color) / pdf_value;
+      return color_from_scatter + color_from_emission;
+    }
   }
 
   ray generate_ray(int y, int x, vec3 delta_u, vec3 delta_v) {

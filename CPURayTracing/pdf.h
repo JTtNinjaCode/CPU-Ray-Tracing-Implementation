@@ -48,8 +48,8 @@ private:
 class dual_pdf : public pdf {
 public:
   dual_pdf(std::shared_ptr<pdf> pdf1, std::shared_ptr<pdf> pdf2) : pdfs_{pdf1, pdf2} {}
-  double value(const vec3 &dir) { return 0.5 * pdfs_[0]->value(dir) + 0.5 * pdfs_[1]->value(dir); }
-  vec3 generate() {
+  double value(const vec3 &dir) const override { return 0.5 * pdfs_[0]->value(dir) + 0.5 * pdfs_[1]->value(dir); }
+  vec3 generate() const override {
     if (random_double() < 0.5)
       return pdfs_[0]->generate();
     else
