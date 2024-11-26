@@ -59,7 +59,7 @@ void sphereflake_test() {
 
   auto start = std::chrono::high_resolution_clock::now();
   cam.render(of, world);
-  // cam.render(of, bvh); 
+  // cam.render(of, bvh);
   auto end = std::chrono::high_resolution_clock::now();
   std::chrono::duration<double> elapsed = end - start;
   std::cout << "Elapsed time: " << elapsed.count() << " seconds\n";
@@ -357,7 +357,7 @@ void skybox_and_fisheye() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_fisheye(720, 1, point3(1.1, 1.8, 1.1), point3(0, 0, 0), 1.0, 90, 100, 5);
+  cam.initialize_fisheye(720, 1, point3(1.1, 1.8, 1.1), point3(0, 0, 0), 1.0, 90, 500, 5);
   cam.background_ = skybox_and_fisheye;
   cam.render(of, world);
 }
@@ -447,13 +447,13 @@ void rotate() {
   cam.render(of, world, quad_light);
 }
 
-void gltf_model_test() {
+void glass_fox() {
   gltf::GltfLoader model("./assets/Fox/glTF/Fox.gltf");
+
+  auto skybox = std::make_shared<picture_texture>(std::make_shared<image>("./assets/bathroom.exr"));
+
+  // load model
   auto &OutputPrimitives = model.getOutputPrimitives();
-
-  auto skybox_and_fisheye = std::make_shared<picture_texture>(std::make_shared<image>("./assets/bathroom.exr"));
-
-  // 加載三角形模型
   hittable_list world;
   for (int i = 0; i < OutputPrimitives.size(); i++) {
     auto &primitive = OutputPrimitives[i];
@@ -461,7 +461,6 @@ void gltf_model_test() {
     std::vector<vec3> positions;
     std::vector<unsigned short> indices;
 
-    // 根據 primitive position 的 type 轉成 vec3
     if (primitive.pos_type == DataType::kFloat) {
       for (int j = 0; j < primitive.positions.size(); j += 3 * sizeof(float)) {
         float x = 0, y = 0, z = 0;
@@ -473,7 +472,6 @@ void gltf_model_test() {
     }
 
     if (primitive.use_indices) {
-      // 根據 primitive indices 的 type 轉成 unsigned short
       if (primitive.indices_type == DataType::kUnsignedShort) {
         for (int j = 0; j < primitive.indices.size(); j += sizeof(unsigned short)) {
           unsigned short index = 0;
@@ -483,17 +481,17 @@ void gltf_model_test() {
       }
     }
 
+    // use EBO or not.
     if (primitive.use_indices) {
-      // 根據 indices 把三角形加入到 world 中
       for (int i = 0; i < indices.size(); i += 3) {
         triangle tri(positions[indices[i]], positions[indices[i + 1]], positions[indices[i + 2]],
-                     std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0f))));
+                     std::make_shared<dielectric>(std::make_shared<solid_color>(color(1.0f)), 1.5));
         world.push_back(std::make_shared<triangle>(tri));
       }
     } else {
       for (int i = 0; i < positions.size(); i += 3) {
         triangle tri(positions[i], positions[i + 1], positions[i + 2],
-                     std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0f))));
+                     std::make_shared<dielectric>(std::make_shared<solid_color>(color(1.0f)), 1.5));
         world.push_back(std::make_shared<triangle>(tri));
       }
     }
@@ -501,9 +499,9 @@ void gltf_model_test() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(400, 16.0 / 9.0, point3(0, 10000, -10000), point3(0, 0, 0), 1, 20.0, 20, 5);
+  cam.initialize_perspective(600, 1.0, point3(220, 220, 220), point3(0, 20, 0), 1, 45.0, 200, 5);
   bvh_node bvh(world);
-  cam.background_ = skybox_and_fisheye;
+  cam.background_ = skybox;
   cam.render(of, bvh);
 }
 
@@ -544,8 +542,70 @@ void final_scene() {
   cam.render(of, bvh);
 }
 
+void sponza() {
+  gltf::GltfLoader model("./assets/Sponza/glTF/Sponza.gltf");
+
+  // load model
+  auto &OutputPrimitives = model.getOutputPrimitives();
+  hittable_list world;
+  for (int i = 0; i < OutputPrimitives.size(); i++) {
+    auto &primitive = OutputPrimitives[i];
+
+    std::vector<vec3> positions;
+    std::vector<unsigned short> indices;
+
+    if (primitive.pos_type == DataType::kFloat) {
+      for (int j = 0; j < primitive.positions.size(); j += 3 * sizeof(float)) {
+        float x = 0, y = 0, z = 0;
+        memcpy(&x, &primitive.positions[j], sizeof(float));
+        memcpy(&y, &primitive.positions[j + 4], sizeof(float));
+        memcpy(&z, &primitive.positions[j + 8], sizeof(float));
+        positions.push_back(vec3(x, y, z));
+      }
+    }
+
+    if (primitive.use_indices) {
+      if (primitive.indices_type == DataType::kUnsignedShort) {
+        for (int j = 0; j < primitive.indices.size(); j += sizeof(unsigned short)) {
+          unsigned short index = 0;
+          memcpy(&index, &primitive.indices[j], sizeof(unsigned short));
+          indices.push_back(index);
+        }
+      }
+    }
+
+    // use EBO or not.
+    if (primitive.use_indices) {
+      for (int i = 0; i < indices.size(); i += 3) {
+        triangle tri(positions[indices[i]], positions[indices[i + 1]], positions[indices[i + 2]],
+                     std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0f))));
+        world.push_back(std::make_shared<triangle>(tri));
+      }
+    } else {
+      for (int i = 0; i < positions.size(); i += 3) {
+        triangle tri(positions[i], positions[i + 1], positions[i + 2],
+                     std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0f))));
+        world.push_back(std::make_shared<triangle>(tri));
+      }
+    }
+  }
+
+  auto light = std::make_shared<diffuse_light>(color(10));
+  auto quad_light = std::make_shared<quad>(point3(0, 1200, 0), vec3(500, 0, 0), vec3(0, 0, 500), light);
+  world.push_back(quad_light);
+
+  std::cout << "bvh building..." << std::endl;
+  bvh_node bvh(world);
+  std::cout << "bvh build done." << std::endl;
+
+  std::ofstream of("output.ppm");
+  camera cam;
+  cam.initialize_perspective(200, 1.0, point3(500, 320, 90), point3(0, 280, 0), 1, 45.0, 30, 5);
+  cam.render(of, bvh, quad_light);
+}
+
 int main() {
-  switch (19) {
+  switch (20) {
   case 1:
     three_mat_ball(); // OK
     break;
@@ -553,7 +613,7 @@ int main() {
     defocus_blur(); // OK
     break;
   case 15:
-    gltf_model_test(); // fix
+    glass_fox(); // OK
     break;
   case 16:
     rotate(); // OK
@@ -599,6 +659,9 @@ int main() {
     break;
   case 19:
     sphereflake_test(); // OK
+    break;
+  case 20:
+    sponza(); // OK
     break;
   default:
     break;
