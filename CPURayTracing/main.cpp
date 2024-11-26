@@ -1,3 +1,4 @@
+#include <chrono>
 #include <fstream>
 #include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
@@ -18,6 +19,51 @@
 #include "utility.h"
 #include "vec3.h"
 #include "volumne.h"
+
+void sphereflake(double radius, const vec3 &center, std::shared_ptr<material> mat, int iteration, hittable_list &world, double scale,
+                 vec3 direction) {
+  world.push_back(std::make_shared<sphere>(center, radius, mat));
+  if (iteration == 0) return;
+
+  onb uvw(direction);
+
+  for (int i = 0; i < 6; ++i) {
+    double angle = 2.0 * pi * i / 6.0;
+    vec3 offset = uvw.transform(vec3(std::cos(angle), 0.0, std::sin(angle)));
+    vec3 new_dir = offset;
+    offset = offset * (radius + radius * scale);
+    sphereflake(radius * scale, center + offset, mat, iteration - 1, world, scale, new_dir);
+  }
+
+  for (int i = 0; i < 3; ++i) {
+    double angle = 2.0 * pi * i / 3.0;
+    vec3 offset = uvw.transform(vec3(std::cos(angle) * std::cos(pi / 3.0), std::sin(pi / 3.0), std::sin(angle) * std::cos(pi / 3.0)));
+    vec3 new_dir = offset;
+    offset = offset * (radius + radius * scale);
+    sphereflake(radius * scale, center + offset, mat, iteration - 1, world, scale, new_dir);
+  }
+}
+
+void sphereflake_test() {
+  auto skybox_and_fisheye = std::make_shared<picture_texture>(std::make_shared<image>("./assets/bathroom.exr"));
+
+  hittable_list world;
+  auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(0.5, 0.5, 0.5)));
+  sphereflake(100, point3(0, 0, 0), metal_mat, 4, world, 0.25, vec3(0, 1, 0));
+
+  bvh_node bvh(world);
+  std::ofstream of("output.ppm");
+  camera cam;
+  cam.initialize_perspective(400, 1.0, point3(200), vec3(0, 0, 0), 1, 90.0, 50, 5);
+  cam.background_ = skybox_and_fisheye;
+
+  auto start = std::chrono::high_resolution_clock::now();
+  cam.render(of, world);
+  // cam.render(of, bvh); 
+  auto end = std::chrono::high_resolution_clock::now();
+  std::chrono::duration<double> elapsed = end - start;
+  std::cout << "Elapsed time: " << elapsed.count() << " seconds\n";
+}
 
 void three_mat_ball() {
   hittable_list world;
@@ -499,7 +545,7 @@ void final_scene() {
 }
 
 int main() {
-  switch (18) {
+  switch (19) {
   case 1:
     three_mat_ball(); // OK
     break;
@@ -550,6 +596,9 @@ int main() {
     break;
   case 18:
     speculer_cornell_box(); // OK
+    break;
+  case 19:
+    sphereflake_test(); // OK
     break;
   default:
     break;

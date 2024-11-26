@@ -6,10 +6,10 @@ public:
   vec3 transform(vec3 v) const { return 0 + v.x() * x + v.y() * y + v.z() * z; }
   vec3 trans_to_conanical(vec3 v) const {}
   vec3 trans_to_onb(vec3 v) const {}
-  vec3 x = vec3(0.0);
-  vec3 y = vec3(0.0);
-  vec3 z = vec3(0.0);
-  vec3 o = vec3(0.0);
+  vec3 x;
+  vec3 y;
+  vec3 z;
+  vec3 o;
 };
 
 // use normal class to construct an orthnormal basis, select two orthogonal vectors in the plane perpendicular to normal and normal as the
