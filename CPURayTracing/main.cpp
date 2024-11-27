@@ -20,10 +20,11 @@
 #include "vec3.h"
 #include "volumne.h"
 
-void sphereflake(double radius, const vec3 &center, std::shared_ptr<material> mat, int iteration, hittable_list &world, double scale,
-                 vec3 direction) {
+void sphereflake_recur(double radius, const vec3 &center, std::shared_ptr<material> mat, int iteration, hittable_list &world, double scale,
+                       vec3 direction) {
   world.push_back(std::make_shared<sphere>(center, radius, mat));
-  if (iteration == 0) return;
+  if (iteration == 0)
+    return;
 
   onb uvw(direction);
 
@@ -32,7 +33,7 @@ void sphereflake(double radius, const vec3 &center, std::shared_ptr<material> ma
     vec3 offset = uvw.transform(vec3(std::cos(angle), 0.0, std::sin(angle)));
     vec3 new_dir = offset;
     offset = offset * (radius + radius * scale);
-    sphereflake(radius * scale, center + offset, mat, iteration - 1, world, scale, new_dir);
+    sphereflake_recur(radius * scale, center + offset, mat, iteration - 1, world, scale, new_dir);
   }
 
   for (int i = 0; i < 3; ++i) {
@@ -40,16 +41,16 @@ void sphereflake(double radius, const vec3 &center, std::shared_ptr<material> ma
     vec3 offset = uvw.transform(vec3(std::cos(angle) * std::cos(pi / 3.0), std::sin(pi / 3.0), std::sin(angle) * std::cos(pi / 3.0)));
     vec3 new_dir = offset;
     offset = offset * (radius + radius * scale);
-    sphereflake(radius * scale, center + offset, mat, iteration - 1, world, scale, new_dir);
+    sphereflake_recur(radius * scale, center + offset, mat, iteration - 1, world, scale, new_dir);
   }
 }
 
-void sphereflake_test() {
+void sphereflake() {
   auto skybox_and_fisheye = std::make_shared<picture_texture>(std::make_shared<image>("./assets/bathroom.exr"));
 
   hittable_list world;
   auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(0.5, 0.5, 0.5)));
-  sphereflake(100, point3(0, 0, 0), metal_mat, 4, world, 0.25, vec3(0, 1, 0));
+  sphereflake_recur(100, point3(0, 0, 0), metal_mat, 4, world, 0.25, vec3(0, 1, 0));
 
   bvh_node bvh(world);
   std::ofstream of("output.ppm");
@@ -65,7 +66,7 @@ void sphereflake_test() {
   std::cout << "Elapsed time: " << elapsed.count() << " seconds\n";
 }
 
-void three_mat_ball() {
+void three_material_ball() {
   hittable_list world;
   auto ground_material = std::make_shared<lambertian>(std::make_shared<checker_texture>(color{1.0, 1.0, 1.0}, color{0.6, 0.6, 0.2}, 1.0));
   auto glass_mat = std::make_shared<dielectric>(std::make_shared<solid_color>(color{1.0, 1.0, 1.0}), 1.5);
@@ -79,12 +80,12 @@ void three_mat_ball() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(400, 16.0 / 9.0, point3(13, 2, 3), vec3(0, 0, 0), 1, 20.0, 100, 5);
+  cam.initialize_perspective(1280, 16.0 / 9.0, point3(13, 2, 3), vec3(0, 0, 0), 1, 20.0, 100, 5);
   cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
   cam.render(of, world);
 }
 
-void defocus_blur() {
+void three_material_ball_with_defocus_blur() {
   hittable_list world;
   auto ground_material = std::make_shared<lambertian>(std::make_shared<checker_texture>(color{1.0, 1.0, 1.0}, color{0.6, 0.6, 0.2}, 1.0));
   auto glass_mat = std::make_shared<dielectric>(std::make_shared<solid_color>(color{1.0, 1.0, 1.0}), 1.5);
@@ -103,220 +104,100 @@ void defocus_blur() {
   cam.render(of, world);
 }
 
-void earth() {
-  hittable_list world;
-  auto earth_tex = std::make_shared<picture_texture>(std::make_shared<image>("./assets/earthmap.jpg"));
-  world.push_back(std::make_shared<sphere>(point3(0, 0, -2), 1.0, std::make_shared<lambertian>(earth_tex)));
-
-  std::ofstream of("output.ppm");
-  camera cam;
-  cam.initialize_perspective(400, 16.0 / 9.0, point3(0, 0, 2), vec3(0, 0, -2), 1, 60.0, 10, 10);
-  cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
-  cam.render(of, world);
-}
-
-void random_ball() {
-  hittable_list world;
-  auto ground_material = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.5, 0.5, 0.5)));
-  world.push_back(std::make_shared<sphere>(point3(0, -1000, 0), 1000, ground_material));
-  for (int a = -11; a < 11; a++) {
-    for (int b = -11; b < 11; b++) {
-      auto choose_mat = random_double();
-      point3 center(a + 0.9 * random_double(), 0.2, b + 0.9 * random_double());
-      if ((center - point3(4, 0.2, 0)).length() > 0.9) {
-        std::shared_ptr<material> sphere_material;
-        if (choose_mat < 0.8) {
-          // diffuse
-          color albedo = random_vec() * random_vec();
-          sphere_material = std::make_shared<lambertian>(std::make_shared<solid_color>(albedo));
-          world.push_back(std::make_shared<sphere>(center, 0.2, sphere_material));
-        } else if (choose_mat < 0.95) {
-          // metal
-          color albedo = random_vec(0.5, 1);
-          auto fuzz = random_double(0, 0.5);
-          sphere_material = std::make_shared<metal>(std::make_shared<solid_color>(albedo), fuzz);
-          world.push_back(std::make_shared<sphere>(center, 0.2, sphere_material));
-        } else {
-          // glass
-          sphere_material = std::make_shared<dielectric>(std::make_shared<solid_color>(color(0, 0, 0)), 1.5);
-          world.push_back(std::make_shared<sphere>(center, 0.2, sphere_material));
-        }
-      }
-    }
-  }
-
-  auto glass_mat = std::make_shared<dielectric>(std::make_shared<solid_color>(color(0, 0, 0)), 1.5);
-  auto matte_mat = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.4, 0.2, 0.1)));
-  auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(0.7, 0.6, 0.5)), 0.0);
-  world.push_back(std::make_shared<sphere>(point3(0, 1, 0), 1.0, glass_mat));
-  world.push_back(std::make_shared<sphere>(point3(-4, 1, 0), 1.0, matte_mat));
-  world.push_back(std::make_shared<sphere>(point3(4, 1, 0), 1.0, metal_mat));
-
-  bvh_node bvh(world);
-
-  std::ofstream of("output.ppm");
-  camera cam;
-  cam.initialize_perspective(400, 16.0 / 9.0, point3(13, 2, 3), point3(0, 0, 0), 1, 20, 100, 5);
-  cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
-  cam.render(of, bvh);
-}
-
 void random_motion_ball() {
   hittable_list world;
-  auto ground_material = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.5, 0.5, 0.5)));
+  auto ground_material = std::make_shared<lambertian>(std::make_shared<checker_texture>(color{1.0, 1.0, 1.0}, color{0.6, 0.6, 0.2}, 1.0));
   world.push_back(std::make_shared<sphere>(point3(0, -1000, 0), 1000, ground_material));
+
   for (int a = -11; a < 11; a++) {
     for (int b = -11; b < 11; b++) {
       auto choose_mat = random_double();
-      point3 center(a + 0.9 * random_double(), 0.2, b + 0.9 * random_double());
-      point3 center2 = center + vec3(0, random_double(0, .3), 0);
+      point3 center1(a + 0.7 * random_double(), 0.2, b + 0.7 * random_double());
+      point3 center2 = center1 + vec3(0, random_double(0, .15), 0);
 
-      if ((center - point3(4, 0.2, 0)).length() > 0.9) {
+      if ((center1 - point3(4, 0.2, 0)).length() > 0.9) {
         std::shared_ptr<material> sphere_material;
-        if (choose_mat < 0.8) {
+        if (choose_mat < 0.3) {
+          // no ball
+        } else if (choose_mat < 0.8) {
           // diffuse
           color albedo = random_vec() * random_vec();
           sphere_material = std::make_shared<lambertian>(std::make_shared<solid_color>(albedo));
-          world.push_back(std::make_shared<sphere>(center, center2, 0.2, sphere_material));
+          world.push_back(std::make_shared<sphere>(center1, center2, 0.2, sphere_material));
         } else if (choose_mat < 0.95) {
           // metal
           color albedo = random_vec(0.5, 1);
-          auto fuzz = random_double(0, 0.5);
-          sphere_material = std::make_shared<metal>(std::make_shared<solid_color>(albedo), fuzz);
-          world.push_back(std::make_shared<sphere>(center, center2, 0.2, sphere_material));
+          // auto fuzz = random_double(0, 0.5); // TODO Fix
+          sphere_material = std::make_shared<metal>(std::make_shared<solid_color>(albedo), 0.0);
+          world.push_back(std::make_shared<sphere>(center1, center2, 0.2, sphere_material));
         } else {
           // glass
-          sphere_material = std::make_shared<dielectric>(std::make_shared<solid_color>(color(0, 0, 0)), 1.5);
-          world.push_back(std::make_shared<sphere>(center, center2, 0.2, sphere_material));
+          sphere_material = std::make_shared<dielectric>(std::make_shared<solid_color>(color(1)), 1.5);
+          world.push_back(std::make_shared<sphere>(center1, center2, 0.2, sphere_material));
         }
       }
     }
   }
 
-  auto glass_mat = std::make_shared<dielectric>(std::make_shared<solid_color>(color(0, 0, 0)), 1.5);
+  auto glass_mat = std::make_shared<dielectric>(std::make_shared<solid_color>(color(1)), 1.5);
   auto matte_mat = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.4, 0.2, 0.1)));
   auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(0.7, 0.6, 0.5)), 0.0);
   world.push_back(std::make_shared<sphere>(point3(0, 1, 0), 1.0, glass_mat));
   world.push_back(std::make_shared<sphere>(point3(-4, 1, 0), 1.0, matte_mat));
-  world.push_back(std::make_shared<sphere>(point3(4, 1, 0), 1.0, metal_mat));
+  world.push_back(std::make_shared<sphere>(point3(4, 1, 0), 1.0, glass_mat));
 
   bvh_node bvh(world);
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(400, 16.0 / 9.0, point3(13, 2, 3), point3(0, 0, 0), 1, 20, 200, 5);
+  cam.initialize_perspective(1280, 16.0 / 9.0, point3(13, 2, 3), point3(0, 0, 0), 1, 20, 20, 50);
   cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
-  // bvh 與 list 的差異比較 ?
   cam.render(of, bvh);
-  // cam.render(of, world);
-}
-
-void marble_texture() {
-  hittable_list world;
-  auto perlin_tex = std::make_shared<perlin_texture>(4);
-  world.push_back(std::make_shared<sphere>(point3(0, 2, 0), 2, std::make_shared<lambertian>(perlin_tex)));
-  world.push_back(std::make_shared<sphere>(point3(0, -1000, 0), 1000, std::make_shared<lambertian>(perlin_tex)));
-
-  std::ofstream of("output.ppm");
-  camera cam;
-  cam.initialize_perspective(1080, 16.0 / 9.0, point3(18, 3, 4), vec3(0, 0, 0), 1, 30.0, 1000, 5);
-  cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
-  cam.render(of, world);
-}
-
-void cube_persp() {
-  hittable_list world;
-  auto left_red = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1, 0.2, 0.2)));
-  auto back_green = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 1.0, 0.2)));
-  auto right_blue = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 0.2, 1.0)));
-  auto upper_orange = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0, 0.5, 0.0)));
-  auto lower_teal = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 0.8, 0.8)));
-
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 4), vec3(0, 0, -4), vec3(0, 4, 0), left_red));
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 0), vec3(4, 0, 0), vec3(0, 4, 0), back_green));
-  world.push_back(std::make_shared<quad>(point3(2, -2, 0), vec3(0, 0, 4), vec3(0, 4, 0), right_blue));
-  world.push_back(std::make_shared<quad>(point3(-2, 2, 0), vec3(4, 0, 0), vec3(0, 0, 4), upper_orange));
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 4), vec3(4, 0, 0), vec3(0, 0, -4), lower_teal));
-
-  camera cam;
-  std::ofstream of("output.ppm");
-  cam.initialize_perspective(400, 16.0 / 9.0, point3(1, 1, 9), point3(0, 0, 0), 1, 80);
-  cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
-  cam.render(of, world);
-}
-
-void cube_orth() {
-  hittable_list world;
-  auto left_red = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1, 0.2, 0.2)));
-  auto back_green = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 1.0, 0.2)));
-  auto right_blue = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 0.2, 1.0)));
-  auto upper_orange = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0, 0.5, 0.0)));
-  auto lower_teal = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 0.8, 0.8)));
-
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 4), vec3(0, 0, -4), vec3(0, 4, 0), left_red));
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 0), vec3(4, 0, 0), vec3(0, 4, 0), back_green));
-  world.push_back(std::make_shared<quad>(point3(2, -2, 0), vec3(0, 0, 4), vec3(0, 4, 0), right_blue));
-  world.push_back(std::make_shared<quad>(point3(-2, 2, 0), vec3(4, 0, 0), vec3(0, 0, 4), upper_orange));
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 4), vec3(4, 0, 0), vec3(0, 0, -4), lower_teal));
-
-  camera cam;
-  std::ofstream of("output.ppm");
-  cam.initialize_orthnormal(400, 10.0, 16.0 / 9.0, point3(1, 1, 9), point3(0, 0, 0), 100, 5);
-  cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
-  cam.render(of, world);
-}
-
-void cube_fisheye() {
-  hittable_list world;
-  auto left_red = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1, 0.2, 0.2)));
-  auto back_green = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 1.0, 0.2)));
-  auto right_blue = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 0.2, 1.0)));
-  auto upper_orange = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0, 0.5, 0.0)));
-  auto lower_teal = std::make_shared<lambertian>(std::make_shared<solid_color>(color(0.2, 0.8, 0.8)));
-
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 4), vec3(0, 0, -4), vec3(0, 4, 0), left_red));
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 0), vec3(4, 0, 0), vec3(0, 4, 0), back_green));
-  world.push_back(std::make_shared<quad>(point3(2, -2, 0), vec3(0, 0, 4), vec3(0, 4, 0), right_blue));
-  world.push_back(std::make_shared<quad>(point3(-2, 2, 0), vec3(4, 0, 0), vec3(0, 0, 4), upper_orange));
-  world.push_back(std::make_shared<quad>(point3(-2, -2, 4), vec3(4, 0, 0), vec3(0, 0, -4), lower_teal));
-
-  camera cam;
-  std::ofstream of("output.ppm");
-  cam.initialize_fisheye(400, 16.0 / 9.0, point3(1, 1, 9), point3(0, 0, 0), 1.0, 60);
-  cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
-  cam.render(of, world);
-}
-
-void simple_light() {
-  hittable_list world;
-  auto pertext = std::make_shared<perlin_texture>(4);
-  auto difflight = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color(4, 4, 4)));
-
-  world.push_back(std::make_shared<sphere>(point3(0, -1000, 0), 1000, std::make_shared<lambertian>(pertext)));
-  world.push_back(std::make_shared<sphere>(point3(0, 2, 0), 2, std::make_shared<lambertian>(pertext)));
-  world.push_back(std::make_shared<quad>(point3(3, 1, -2), vec3(2, 0, 0), vec3(0, 2, 0), difflight));
-
-  std::ofstream of("output.ppm");
-  camera cam;
-  cam.initialize_perspective(764, 16.0 / 9.0, point3(26, 3, 6), point3(0, 2, 0), 1, 20.0, 1000, 5);
-  cam.background_ = solid_color::black;
-  cam.render(of, world);
 }
 
 void simple_light_earth() {
   hittable_list world;
   auto perlin_tex = std::make_shared<perlin_texture>(4);
   auto earth_tex = std::make_shared<picture_texture>(std::make_shared<image>("./assets/earthmap.jpg"));
-  auto difflight = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color(4, 4, 4)));
+  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color(9)));
 
   world.push_back(std::make_shared<sphere>(point3(0, -1000, 0), 1000, std::make_shared<lambertian>(perlin_tex)));
   world.push_back(std::make_shared<sphere>(point3(0, 2, 0), 2, std::make_shared<lambertian>(earth_tex)));
-  world.push_back(std::make_shared<quad>(point3(-1, 8, -1), vec3(2, 0, 0), vec3(0, 0, 2), difflight));
+
+  auto quad_light = std::make_shared<quad>(point3(-2, 7, -2), vec3(4, 0, 0), vec3(0, 0, 4), light);
+  world.push_back(quad_light);
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(764, 16.0 / 9.0, point3(26, 3, 6), point3(0, 2, 0), 1, 20.0, 1000, 5);
+  cam.initialize_perspective(1280, 16.0 / 9.0, point3(26, 3, 6), point3(0, 2, 0), 1, 20.0, 500, 5);
   cam.background_ = solid_color::black;
+  cam.render(of, world, quad_light);
+}
+
+void skybox_and_fisheye() {
+  auto skybox = std::make_shared<picture_texture>(std::make_shared<image>("./assets/bathroom.exr"));
+  hittable_list world;
+
+  world.push_back(std::make_shared<sphere>(vec3(0), 1, std::make_shared<dielectric>(solid_color::white, 1.0)));
+
+  std::ofstream of("output.ppm");
+  camera cam;
+  cam.initialize_fisheye(600, 1, point3(1.1, 1.8, 1.1), point3(0, 0, 0), 1.0, 90, 500, 5);
+  cam.background_ = skybox;
+  cam.render(of, world);
+}
+
+void skybox_and_motion_blur() {
+  auto skybox = std::make_shared<picture_texture>(std::make_shared<image>("./assets/bathroom.exr"));
+  hittable_list world;
+  auto earth_tex = std::make_shared<picture_texture>(std::make_shared<image>("./assets/earthmap.jpg"));
+
+  world.push_back(std::make_shared<sphere>(vec3(-0.2, 0, 0), vec3(0.2, 0, 0), 1, std::make_shared<lambertian>(earth_tex)));
+
+  std::ofstream of("output.ppm");
+  camera cam;
+  cam.initialize_perspective(600, 1, point3(0, 0, 4), point3(0, 0, 0), 1.0, 70, 500, 5);
+  cam.background_ = skybox;
   cam.render(of, world);
 }
 
@@ -329,40 +210,28 @@ void cornell_box() {
 
   world.push_back(std::make_shared<quad>(point3(555, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), green));
   world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), red));
-  world.push_back(std::make_shared<quad>(point3(343, 554, 332), vec3(-130, 0, 0), vec3(0, 0, -105), light));
   world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(555, 0, 0), vec3(0, 0, 555), white));
   world.push_back(std::make_shared<quad>(point3(555, 555, 555), vec3(-555, 0, 0), vec3(0, 0, -555), white));
   world.push_back(std::make_shared<quad>(point3(0, 0, 555), vec3(555, 0, 0), vec3(0, 555, 0), white));
 
-  auto big_box = std::make_shared<translate>(vec3(100, 0, 100), box(point3(0), point3(165, 330, 165), white));
-  auto small_box = std::make_shared<translate>(vec3(50, 0, 50), box(point3(0), point3(165, 165, 165), white));
+  auto big_box = std::make_shared<translate>(vec3(100, 0, 200), box(point3(0), point3(165, 330, 165), white));
+  auto small_box = std::make_shared<translate>(vec3(50, 0, 100), box(point3(0), point3(165, 165, 165), white));
+  auto quad_light = std::make_shared<quad>(point3(343, 554, 332), vec3(-130, 0, 0), vec3(0, 0, -105), light);
 
   world.push_back(big_box);
   world.push_back(small_box);
+  world.push_back(quad_light);
 
   bvh_node bvh(world);
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(600, 16.0 / 9.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40.0, 40, 4);
+  cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40.0, 40, 4);
   cam.background_ = solid_color::black;
-  cam.render(of, bvh);
+  cam.render(of, bvh, quad_light);
 }
 
-void skybox_and_fisheye() {
-  auto skybox_and_fisheye = std::make_shared<picture_texture>(std::make_shared<image>("./assets/bathroom.exr"));
-  hittable_list world;
-
-  world.push_back(std::make_shared<sphere>(vec3(0), 1, std::make_shared<dielectric>(solid_color::white, 1.0)));
-
-  std::ofstream of("output.ppm");
-  camera cam;
-  cam.initialize_fisheye(720, 1, point3(1.1, 1.8, 1.1), point3(0, 0, 0), 1.0, 90, 500, 5);
-  cam.background_ = skybox_and_fisheye;
-  cam.render(of, world);
-}
-
-void smoke_cornell_box() {
+void cornell_box_with_volume() {
   hittable_list world;
   auto red = std::make_shared<lambertian>(color(.65, .05, .05));
   auto white = std::make_shared<lambertian>(color(.73, .73, .73));
@@ -386,12 +255,12 @@ void smoke_cornell_box() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(512, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 100, 5);
+  cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 100, 5);
   cam.background_ = solid_color::black;
   cam.render(of, world, quad_light);
 }
 
-void speculer_cornell_box() {
+void cornell_box_with_specular_box() {
   hittable_list world;
   auto red = std::make_shared<lambertian>(color(.65, .05, .05));
   auto white = std::make_shared<lambertian>(color(.73, .73, .73));
@@ -416,12 +285,12 @@ void speculer_cornell_box() {
 
   std::ofstream of("output.ppm");
   camera cam;
-  cam.initialize_perspective(512, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 100, 5);
+  cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 500, 5);
   cam.background_ = solid_color::black;
   cam.render(of, world, quad_light);
 }
 
-void rotate() {
+void cornell_box_with_rotated_box() {
   hittable_list world;
   auto red = std::make_shared<lambertian>(color(.65, .05, .05));
   auto white = std::make_shared<lambertian>(color(.73, .73, .73));
@@ -505,7 +374,7 @@ void glass_fox() {
   cam.render(of, bvh);
 }
 
-void final_scene() {
+void perlin_texture_ball() {
   hittable_list boxes1;
   auto ground = std::make_shared<lambertian>(color(0.48, 0.83, 0.53));
   int boxes_per_side = 20;
@@ -536,7 +405,7 @@ void final_scene() {
       std::make_shared<rotate_x>(std::make_shared<sphere>(point3(0), 80, std::make_shared<lambertian>(pertext)), -90)));
 
   camera cam;
-  cam.initialize_perspective(512, 1.0, point3(478, 278, -600), point3(278, 278, 0), 1, 40.0, 100, 5);
+  cam.initialize_perspective(600, 1.0, point3(478, 278, -600), point3(278, 278, 0), 1, 40.0, 500, 5);
   bvh_node bvh(world);
   std::ofstream of("output.ppm");
   cam.render(of, bvh);
@@ -604,66 +473,125 @@ void sponza() {
   cam.render(of, bvh, quad_light);
 }
 
+void white_sphere() {
+  hittable_list world;
+  auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(1.0)), 0.1);
+  // auto red = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0, 0.0, 0.0)));
+  world.push_back(std::make_shared<sphere>(point3(0, 0, 0), 1, metal_mat));
+
+  std::ofstream of("output.ppm");
+  camera cam;
+  cam.initialize_perspective(400, 1.0, point3(13, 2, 3), point3(0, 0, 0), 1, 20, 100, 5);
+  cam.background_ = std::make_shared<solid_color>(color(1.0));
+  cam.render(of, world);
+}
+
+void different_fuzz_metal() {
+  hittable_list world;
+
+  auto red = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.65, .05, .05}));
+  auto white = std::make_shared<lambertian>(std::make_shared<solid_color>(color{0.73, 0.73, 0.73}));
+  auto green = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.12, .45, .15}));
+  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color(7)));
+
+  world.push_back(std::make_shared<quad>(point3(18, -4, -3), vec3(0, 8, 0), vec3(0, 0, 6), green));
+  world.push_back(std::make_shared<quad>(point3(0, -4, -3), vec3(0, 8, 0), vec3(0, 0, 6), red));
+  world.push_back(std::make_shared<quad>(point3(0, -4, -3), vec3(18, 0, 0), vec3(0, 0, 6), white));
+  world.push_back(std::make_shared<quad>(point3(0, 4, -3), vec3(18, 0, 0), vec3(0, 0, 6), white));
+  world.push_back(std::make_shared<quad>(point3(0, -4, -3), vec3(18, 0, 0), vec3(0, 10, 0), white));
+
+  auto fuzz_00 = std::make_shared<metal>(solid_color::white, 0.00);
+  auto fuzz_25 = std::make_shared<metal>(solid_color::white, 0.25);
+  auto fuzz_50 = std::make_shared<metal>(solid_color::white, 0.50);
+  auto fuzz_75 = std::make_shared<metal>(solid_color::white, 0.75);
+  auto fuzz_10 = std::make_shared<metal>(solid_color::white, 1.00); // same as lambertian
+
+  world.push_back(std::make_shared<sphere>(point3(2, 0, -0.5), 1.25, fuzz_00));
+  world.push_back(std::make_shared<sphere>(point3(5.5, 0, -0.5), 1.25, fuzz_25));
+  world.push_back(std::make_shared<sphere>(point3(9, 0, -0.5), 1.25, fuzz_50));
+  world.push_back(std::make_shared<sphere>(point3(12.5, 0, -0.5), 1.25, fuzz_75));
+  world.push_back(std::make_shared<sphere>(point3(16, 0, -0.5), 1.25, fuzz_10));
+
+  auto quad_light = std::make_shared<quad>(point3(7, 3.995, -1.5), vec3(4, 0, 0), vec3(0, 0, 3), light);
+  world.push_back(quad_light);
+
+  bvh_node bvh(world);
+
+  std::ofstream of("output.ppm");
+  camera cam;
+  cam.initialize_perspective(760, 19.0 / 9.0, point3(9, 0, 15.2), point3(9, 0, 1), 1, 40.0, 1000, 10);
+  cam.background_ = solid_color::black;
+  cam.render(of, bvh, quad_light);
+}
+
+void infinite_reflection() {
+  hittable_list world;
+  auto red = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.65, .05, .05}));
+  auto white = std::make_shared<lambertian>(std::make_shared<solid_color>(color{0.73, 0.73, 0.73}));
+  auto green = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.12, .45, .15}));
+  auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(0.80)), 0.0);
+  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color{7}));
+
+  world.push_back(std::make_shared<quad>(point3(555, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), green));
+  world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), red));
+  world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(555, 0, 0), vec3(0, 0, 555), white));
+  world.push_back(std::make_shared<quad>(point3(555, 555, 555), vec3(-555, 0, 0), vec3(0, 0, -555), white));
+  world.push_back(std::make_shared<quad>(point3(0, 0, 555), vec3(555, 0, 0), vec3(0, 555, 0), metal_mat));
+  world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(555, 0, 0), vec3(0, 555, 0), metal_mat));
+
+  auto earth_tex = std::make_shared<picture_texture>(std::make_shared<image>("./assets/earthmap.jpg"));
+  world.push_back(std::make_shared<sphere>(point3(460, 80, 80), 60, std::make_shared<lambertian>(earth_tex)));
+
+  auto cube = std::make_shared<translate>(vec3(130, 0, 65), std::make_shared<rotate_y>(box(point3(0), point3(140, 140, 140), white), -15));
+  world.push_back(cube);
+
+  auto quad_light = std::make_shared<quad>(point3(113, 554, 127), vec3(330, 0, 0), vec3(0, 0, 305), light);
+  world.push_back(quad_light);
+
+  bvh_node bvh(world);
+
+  std::ofstream of("output.ppm");
+  camera cam;
+  cam.initialize_perspective(600, 1.0, point3(500, 290, 550), point3(400, 278, 0), 1, 40.0, 200, 10);
+  cam.background_ = solid_color::black;
+  cam.render(of, bvh, quad_light);
+}
+
 int main() {
-  switch (20) {
-  case 1:
-    three_mat_ball(); // OK
-    break;
-  case 14:
-    defocus_blur(); // OK
-    break;
-  case 15:
-    glass_fox(); // OK
-    break;
-  case 16:
-    rotate(); // OK
-    break;
-  case 17:
-    final_scene(); // OK
-    break;
-  case 2:
-    earth(); // OK
-    break;
-  case 3:
-    random_ball(); // OK
-    break;
-  case 4:
-    random_motion_ball(); // OK
-    break;
-  case 5:
-    marble_texture(); // OK
-    break;
-  case 6:
-    cube_persp(); // OK
-    break;
-  case 12:
-    cube_orth(); // OK
-    break;
-  case 7:
-    simple_light();
-    break;
-  case 8:
-    simple_light_earth();
-    break;
-  case 9:
-    cornell_box(); // OK
-    break;
-  case 10:
-    skybox_and_fisheye(); // OK
-    break;
-  case 11:
-    smoke_cornell_box(); // OK
-    break;
-  case 18:
-    speculer_cornell_box(); // OK
-    break;
-  case 19:
-    sphereflake_test(); // OK
-    break;
-  case 20:
-    sponza(); // OK
-    break;
-  default:
-    break;
+  std::vector<std::pair<std::string, std::function<void()>>> test_cases = {
+      {"Three Material Ball", three_material_ball},
+      {"Three Material Ball with Defocus Blur", three_material_ball_with_defocus_blur},
+      {"Random Motion Ball", random_motion_ball}, // FIX
+      {"Simple Light Earth", simple_light_earth},
+      {"Skybox and Fisheye", skybox_and_fisheye},
+      {"Skybox and Motion Blur", skybox_and_motion_blur},
+      {"Cornell Box", cornell_box},
+      {"Cornell Box with Volume", cornell_box_with_volume},
+      {"Cornell Box with Rotated Box", cornell_box_with_rotated_box},
+      {"Cornell Box with Specular Box", cornell_box_with_specular_box},
+      {"Glass Fox", glass_fox},
+      {"Perlin Texture Ball", perlin_texture_ball},
+      {"Sphereflake", sphereflake},
+      {"Sponza", sponza},
+      {"White Sphere", white_sphere},
+      {"Different Fuzz Metal", different_fuzz_metal},
+      {"Infinite Reflection", infinite_reflection},
+  };
+
+  std::cout << "Choose a scene to render:" << std::endl;
+  for (size_t i = 0; i < test_cases.size(); ++i) {
+    std::cout << i + 1 << ". " << test_cases[i].first << std::endl;
   }
+
+  int which;
+  std::cout << "Enter the number of the scene you want to render: ";
+  std::cin >> which;
+
+  if (which > 0 && which <= static_cast<int>(test_cases.size())) {
+    test_cases[which - 1].second();
+  } else {
+    std::cout << "Invalid selection. Please choose a valid number." << std::endl;
+  }
+
+  return 0;
 }

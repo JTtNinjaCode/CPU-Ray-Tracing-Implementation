@@ -49,7 +49,8 @@ public:
     double b = 2.0 * dot(r.direction(), (r.origin() - center));
     double c = dot(r.origin() - center, r.origin() - center) - radius_ * radius_;
     double discriminant = b * b - 4 * a * c;
-    if (discriminant < 0) return false;
+    if (discriminant < 0)
+      return false;
 
     double sqrtd = std::sqrt(discriminant);
     double root = (-b - sqrtd) / (2.0 * a);

@@ -84,24 +84,12 @@ public:
     tex_ = std::make_shared<solid_color>(albedo);
   }
   virtual bool scatter(const ray &r_in, const hit_record &hit_record, scatter_record &scatter_record) const override {
-    if (fuzz_ != 0) {
-      auto scatter_direction = unit_vector(reflect(r_in.direction(), hit_record.normal));
-      scatter_direction += fuzz_ * random_unit_vec();
-      scatter_record.mode = scatter_mode::kRandom;
-      scatter_record.ray_scattered = ray(hit_record.p, scatter_direction, r_in.time());
-      scatter_record.attenuation = tex_->sample(hit_record.u, hit_record.v, hit_record.p);
-      // if fuzz's radius is too large, the vector will shoot into the object, so we need to make sure that vector is the same direction as
-      // the normal
-      return (dot(scatter_record.ray_scattered.direction(), hit_record.normal) > 0);
-    } else {
-      auto scatter_direction = unit_vector(reflect(r_in.direction(), hit_record.normal));
-      scatter_record.mode = scatter_mode::kDetermined;
-      scatter_record.ray_scattered = ray(hit_record.p, scatter_direction, r_in.time());
-      scatter_record.attenuation = tex_->sample(hit_record.u, hit_record.v, hit_record.p);
-      // if fuzz's radius is too large, the vector will shoot into the object, so we need to make sure that vector is the same direction as
-      // the normal
-      return (dot(scatter_record.ray_scattered.direction(), hit_record.normal) > 0);
-    }
+    auto scatter_direction = unit_vector(reflect(r_in.direction(), hit_record.normal));
+    scatter_direction += fuzz_ * random_unit_vec();
+    scatter_record.mode = scatter_mode::kDetermined;
+    scatter_record.ray_scattered = ray(hit_record.p, scatter_direction, r_in.time());
+    scatter_record.attenuation = tex_->sample(hit_record.u, hit_record.v, hit_record.p);
+    return true;
   }
 
 private:
@@ -180,7 +168,8 @@ public:
   diffuse_light(color albedo) { tex_ = std::make_shared<solid_color>(albedo); }
 
   color emitted(const ray &r_in, const hit_record &record, double u, double v, const point3 &p) const override {
-    if (!record.front_face) return color(0, 0, 0);
+    if (!record.front_face)
+      return color(0, 0, 0);
     return tex_->sample(u, v, p);
   }
 

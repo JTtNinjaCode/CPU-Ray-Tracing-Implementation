@@ -176,27 +176,35 @@ public:
   }
 
 private:
-  color hit_skybox(ray r, hit_record &record) const {
+  // Correspond to vulkan's Miss Shader
+  color miss(ray r) const {
+    hit_record record;
     if (background_) {
       sphere unit_sphere(r.origin(), 1.0f, nullptr);
-      if (unit_sphere.hit(r, interval(0.001, infinity), record)) return background_->sample(record.u, record.v, record.p);
+      if (unit_sphere.hit(r, interval(0.001, infinity), record))
+        return background_->sample(record.u, record.v, record.p);
+      else
+        return color(0);
     }
     return color(0);
   }
 
-  // Get a color from a single ray
+  // Get a color from a single ray, corresponding to vulkan's Closest Hit Shader
   color ray_color(const ray &r, const hittable &world, int iteration, const std::shared_ptr<const hittable> light) const {
-    if (iteration <= 0) return color(0);
+    if (iteration <= 0)
+      return color(0);
 
     hit_record record;
-    if (!world.hit(r, interval(0.001, infinity), record)) return hit_skybox(r, record);
+    if (!world.hit(r, interval(0.001, infinity), record))
+      return miss(r);
     // hit object! record is valid, check the material of the object hit
 
     color color_from_emission = record.mat->emitted(r, record, record.u, record.v, record.p);
 
     scatter_record scatter_record;
     double pdf_value = 0;
-    if (!record.mat->scatter(r, record, scatter_record)) return color_from_emission;
+    if (!record.mat->scatter(r, record, scatter_record))
+      return color_from_emission;
     // 以下代表成功 scatter，接著計算下一條 ray 的方向並且得到顏色
 
     if (scatter_record.mode == scatter_mode::kDetermined) {
@@ -232,6 +240,7 @@ private:
     }
   }
 
+  // Correspond to vulkan's Ray Generation Shader
   ray generate_ray(int y, int x, vec3 delta_u, vec3 delta_v) {
     if (mode_ == kPerspective) {
       point3 ray_dir00 = focal_length_ * dir_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
@@ -246,7 +255,7 @@ private:
       vec3 offset = sample_square();
       point3 rand_pos = pos + offset.x() * delta_u + offset.y() * delta_v;
       double ray_time = random_double();
-      return {rand_pos, dir_, ray_time};
+      //////return {rand_pos, dir_, ray_time};
     } else if (mode_ == kFisheye) {
       point3 ray_dir00 = focal_length_ * dir_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
       point3 ray_dir = ray_dir00 + x * delta_u + y * delta_v;
