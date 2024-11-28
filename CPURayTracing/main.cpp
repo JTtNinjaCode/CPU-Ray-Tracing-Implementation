@@ -1,6 +1,5 @@
 #include <chrono>
 #include <fstream>
-#include <iostream>
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_FAILURE_USERMSG
 #include "aabb.h"
@@ -20,6 +19,7 @@
 #include "vec3.h"
 #include "volumne.h"
 
+std::ofstream of;
 void sphereflake_recur(double radius, const vec3 &center, std::shared_ptr<material> mat, int iteration, hittable_list &world, double scale,
                        vec3 direction) {
   world.push_back(std::make_shared<sphere>(center, radius, mat));
@@ -53,7 +53,7 @@ void sphereflake() {
   sphereflake_recur(100, point3(0, 0, 0), metal_mat, 4, world, 0.25, vec3(0, 1, 0));
 
   bvh_node bvh(world);
-  std::ofstream of("output.ppm");
+
   camera cam;
   cam.initialize_perspective(400, 1.0, point3(200), vec3(0, 0, 0), 1, 90.0, 50, 5);
   cam.background_ = skybox_and_fisheye;
@@ -78,7 +78,6 @@ void three_material_ball() {
   world.push_back(std::make_shared<sphere>(point3(-4, 1, 0), 1.0, matte_mat));
   world.push_back(std::make_shared<sphere>(point3(4, 1, 0), 1.0, metal_mat));
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(1280, 16.0 / 9.0, point3(13, 2, 3), vec3(0, 0, 0), 1, 20.0, 100, 5);
   cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
@@ -97,7 +96,6 @@ void three_material_ball_with_defocus_blur() {
   world.push_back(std::make_shared<sphere>(point3(-4, 1, 0), 1.0, matte_mat));
   world.push_back(std::make_shared<sphere>(point3(4, 1, 0), 1.0, metal_mat));
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_lens(1280, 16.0 / 9.0, point3(13, 2, 3), vec3(1, 1, 1), 2.0, 15, 20.0, 1000, 5);
   cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
@@ -148,7 +146,6 @@ void random_motion_ball() {
 
   bvh_node bvh(world);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(1280, 16.0 / 9.0, point3(13, 2, 3), point3(0, 0, 0), 1, 20, 20, 50);
   cam.background_ = std::make_shared<solid_color>(color(0.7, 0.8, 1.0));
@@ -167,7 +164,6 @@ void simple_light_earth() {
   auto quad_light = std::make_shared<quad>(point3(-2, 7, -2), vec3(4, 0, 0), vec3(0, 0, 4), light);
   world.push_back(quad_light);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(1280, 16.0 / 9.0, point3(26, 3, 6), point3(0, 2, 0), 1, 20.0, 500, 5);
   cam.background_ = solid_color::black;
@@ -180,7 +176,6 @@ void skybox_and_fisheye() {
 
   world.push_back(std::make_shared<sphere>(vec3(0), 1, std::make_shared<dielectric>(solid_color::white, 1.0)));
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_fisheye(600, 1, point3(1.1, 1.8, 1.1), point3(0, 0, 0), 1.0, 90, 500, 5);
   cam.background_ = skybox;
@@ -194,7 +189,6 @@ void skybox_and_motion_blur() {
 
   world.push_back(std::make_shared<sphere>(vec3(-0.2, 0, 0), vec3(0.2, 0, 0), 1, std::make_shared<lambertian>(earth_tex)));
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(600, 1, point3(0, 0, 4), point3(0, 0, 0), 1.0, 70, 500, 5);
   cam.background_ = skybox;
@@ -224,7 +218,6 @@ void cornell_box() {
 
   bvh_node bvh(world);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40.0, 40, 4);
   cam.background_ = solid_color::black;
@@ -253,7 +246,6 @@ void cornell_box_with_volume() {
   auto quad_light = std::make_shared<quad>(point3(113, 554, 127), vec3(330, 0, 0), vec3(0, 0, 305), light);
   world.push_back(quad_light);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 100, 5);
   cam.background_ = solid_color::black;
@@ -283,7 +275,6 @@ void cornell_box_with_specular_box() {
   auto quad_light = std::make_shared<quad>(point3(113, 554, 127), vec3(330, 0, 0), vec3(0, 0, 305), light);
   world.push_back(quad_light);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 500, 5);
   cam.background_ = solid_color::black;
@@ -309,7 +300,6 @@ void cornell_box_with_rotated_box() {
   auto quad_light = std::make_shared<quad>(point3(113, 554, 127), vec3(330, 0, 0), vec3(0, 0, 305), light);
   world.push_back(quad_light);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 100, 5);
   cam.background_ = solid_color::black;
@@ -366,7 +356,6 @@ void glass_fox() {
     }
   }
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(600, 1.0, point3(220, 220, 220), point3(0, 20, 0), 1, 45.0, 200, 5);
   bvh_node bvh(world);
@@ -407,7 +396,7 @@ void perlin_texture_ball() {
   camera cam;
   cam.initialize_perspective(600, 1.0, point3(478, 278, -600), point3(278, 278, 0), 1, 40.0, 500, 5);
   bvh_node bvh(world);
-  std::ofstream of("output.ppm");
+
   cam.render(of, bvh);
 }
 
@@ -467,7 +456,6 @@ void sponza() {
   bvh_node bvh(world);
   std::cout << "bvh build done." << std::endl;
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(200, 1.0, point3(500, 320, 90), point3(0, 280, 0), 1, 45.0, 30, 5);
   cam.render(of, bvh, quad_light);
@@ -479,7 +467,6 @@ void white_sphere() {
   // auto red = std::make_shared<lambertian>(std::make_shared<solid_color>(color(1.0, 0.0, 0.0)));
   world.push_back(std::make_shared<sphere>(point3(0, 0, 0), 1, metal_mat));
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(400, 1.0, point3(13, 2, 3), point3(0, 0, 0), 1, 20, 100, 5);
   cam.background_ = std::make_shared<solid_color>(color(1.0));
@@ -517,7 +504,6 @@ void different_fuzz_metal() {
 
   bvh_node bvh(world);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(760, 19.0 / 9.0, point3(9, 0, 15.2), point3(9, 0, 1), 1, 40.0, 1000, 10);
   cam.background_ = solid_color::black;
@@ -550,7 +536,6 @@ void infinite_reflection() {
 
   bvh_node bvh(world);
 
-  std::ofstream of("output.ppm");
   camera cam;
   cam.initialize_perspective(600, 1.0, point3(500, 290, 550), point3(400, 278, 0), 1, 40.0, 200, 10);
   cam.background_ = solid_color::black;
@@ -578,20 +563,35 @@ int main() {
       {"Infinite Reflection", infinite_reflection},
   };
 
-  std::cout << "Choose a scene to render:" << std::endl;
-  for (size_t i = 0; i < test_cases.size(); ++i) {
-    std::cout << i + 1 << ". " << test_cases[i].first << std::endl;
+  // Prompt for output file name
+  std::cout << "Input output file name (.ppm), or press Enter for default ('output.ppm'): ";
+  std::string output_file;
+  std::getline(std::cin, output_file);
+
+  // If no input, set the default file name
+  if (output_file.empty())
+    output_file = "output.ppm";
+  of.open(output_file);
+
+  if (!of) {
+    std::cout << "Failed to open file: " << output_file << std::endl;
+    return 1;
   }
+
+  // Display scene options
+  std::cout << "Choose a scene to render:" << std::endl;
+  for (size_t i = 0; i < test_cases.size(); ++i)
+    std::cout << i + 1 << ". " << test_cases[i].first << std::endl;
 
   int which;
   std::cout << "Enter the number of the scene you want to render: ";
   std::cin >> which;
 
-  if (which > 0 && which <= static_cast<int>(test_cases.size())) {
+  // Render the selected scene
+  if (which > 0 && which <= static_cast<int>(test_cases.size()))
     test_cases[which - 1].second();
-  } else {
+  else
     std::cout << "Invalid selection. Please choose a valid number." << std::endl;
-  }
 
   return 0;
 }

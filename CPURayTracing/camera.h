@@ -158,7 +158,7 @@ public:
     std::for_each(std::execution::par_unseq, row_indices.begin(), row_indices.end(), [&](int i) {
       {
         std::lock_guard<std::mutex> lock(clog_mux_);
-        std::clog << "Write Line: " << i << '\n';
+        std::cout << "Write Line: " << i << '\n';
       }
       for (int j = 0; j < image_width_; j++) {
         color pixel_color(0);
@@ -172,7 +172,7 @@ public:
     });
 
     std::for_each(image_.begin(), image_.end(), [&](const color &c) { write_color(out, c); });
-    std::clog << "Done.\n";
+    std::cout << "Done.\n";
   }
 
 private:
