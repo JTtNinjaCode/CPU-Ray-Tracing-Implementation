@@ -1,5 +1,5 @@
 #pragma once
-#include <map>
+#include <algorithm>
 
 #include "hittable.h"
 #include "onb.h"
@@ -26,9 +26,8 @@
 // kRandom: return [attenuation, pdf], user can combine it with other pdf and sample it
 // kDetermined: return [attenuation, ray_scattered], user can directly use it
 enum class scatter_mode { kRandom, kDetermined };
-// 下一個散射的方向
 struct scatter_record {
-  scatter_mode mode;
+  scatter_mode mode; // use importance sampling or not
   vec3 attenuation;
   ray ray_scattered;
   std::shared_ptr<pdf> pdf;
@@ -141,6 +140,48 @@ private:
 
   std::shared_ptr<texture> tex_;
   float refract_;
+};
+
+class gloss : public material {
+public:
+  gloss(std::shared_ptr<texture> albedo, float smoothness, float specular_prob) : albedo_(albedo) {
+    smoothness_ = interval(0, 1).clamp(smoothness);
+    specular_prob_ = specular_prob;
+  }
+
+  gloss(color albedo, float smoothness, float specular_prob) : albedo_(std::make_shared<solid_color>(albedo)) {
+    smoothness_ = interval(0, 1).clamp(smoothness);
+    specular_prob_ = specular_prob;
+  }
+
+  // [out] scattered, attenuation
+  virtual bool scatter(const ray &r_in, const hit_record &hit_record, scatter_record &scatter_record) const override {
+    vec3 specular_dir = reflect(r_in.direction(), hit_record.normal);
+
+    bool is_specular = random_double() <= specular_prob_;
+    if (is_specular) {
+      vec3 diffuse_dir = hemisphere_cosine_pdf(hit_record.normal).generate();
+      vec3 direction = unit_vector(linear_interpolation(smoothness_, diffuse_dir, specular_dir));
+      scatter_record.mode = scatter_mode::kDetermined;
+      scatter_record.attenuation = color(1.0);
+      scatter_record.ray_scattered = ray(hit_record.p, direction, r_in.time());
+    } else {
+      scatter_record.mode = scatter_mode::kRandom;
+      scatter_record.attenuation = albedo_->sample(hit_record.u, hit_record.v, hit_record.p);
+      scatter_record.pdf = std::make_shared<hemisphere_cosine_pdf>(hit_record.normal);
+    }
+    return true;
+  }
+
+  virtual double p_scattered(const ray &r_in, const hit_record &rec, const ray &scattered) const override {
+    auto cosine = dot(rec.normal, unit_vector(scattered.direction()));
+    return cosine < 0 ? 0 : cosine / pi;
+  }
+
+private:
+  std::shared_ptr<texture> albedo_;
+  float smoothness_; // 0: diffuse, 1: specular
+  float specular_prob_;
 };
 
 class isotropic : public material {

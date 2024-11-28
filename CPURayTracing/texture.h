@@ -16,6 +16,12 @@ public:
 
   static std::shared_ptr<solid_color> black;
   static std::shared_ptr<solid_color> white;
+  static std::shared_ptr<solid_color> red;
+  static std::shared_ptr<solid_color> green;
+  static std::shared_ptr<solid_color> blue;
+  static std::shared_ptr<solid_color> yellow;
+  static std::shared_ptr<solid_color> cyan;
+  static std::shared_ptr<solid_color> magenta;
 
 private:
   color color_;
@@ -23,6 +29,12 @@ private:
 
 std::shared_ptr<solid_color> solid_color::black = std::make_shared<solid_color>(color(0, 0, 0));
 std::shared_ptr<solid_color> solid_color::white = std::make_shared<solid_color>(color(1, 1, 1));
+std::shared_ptr<solid_color> solid_color::red = std::make_shared<solid_color>(color(1, 0, 0));
+std::shared_ptr<solid_color> solid_color::green = std::make_shared<solid_color>(color(0, 1, 0));
+std::shared_ptr<solid_color> solid_color::blue = std::make_shared<solid_color>(color(0, 0, 1));
+std::shared_ptr<solid_color> solid_color::yellow = std::make_shared<solid_color>(color(1, 1, 0));
+std::shared_ptr<solid_color> solid_color::cyan = std::make_shared<solid_color>(color(0, 1, 1));
+std::shared_ptr<solid_color> solid_color::magenta = std::make_shared<solid_color>(color(1, 0, 1));
 
 class checker_texture : public texture {
 public:

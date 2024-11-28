@@ -24,14 +24,6 @@ void write_color(std::ostream &out, const color &pixel_color) {
   auto g = pixel_color.y();
   auto b = pixel_color.z();
 
-  // Replace NaN components with zero.
-  if (r != r)
-    r = 0.0;
-  if (g != g)
-    g = 0.0;
-  if (b != b)
-    b = 0.0;
-
   r = linear_to_gamma(r);
   g = linear_to_gamma(g);
   b = linear_to_gamma(b);

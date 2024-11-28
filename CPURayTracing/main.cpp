@@ -159,7 +159,7 @@ void simple_light_earth() {
   auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color(9)));
 
   world.push_back(std::make_shared<sphere>(point3(0, -1000, 0), 1000, std::make_shared<lambertian>(perlin_tex)));
-  world.push_back(std::make_shared<sphere>(point3(0, 2, 0), 2, std::make_shared<lambertian>(earth_tex)));
+  world.push_back(std::make_shared<sphere>(point3(0, 2, 0), 2, std::make_shared<gloss>(earth_tex, 1.0, 0.08)));
 
   auto quad_light = std::make_shared<quad>(point3(-2, 7, -2), vec3(4, 0, 0), vec3(0, 0, 4), light);
   world.push_back(quad_light);
@@ -304,6 +304,42 @@ void cornell_box_with_rotated_box() {
   cam.initialize_perspective(600, 1.0, point3(278, 278, -800), point3(278, 278, 0), 1, 40, 100, 5);
   cam.background_ = solid_color::black;
   cam.render(of, world, quad_light);
+}
+
+void cornell_box_with_glossy_ball() {
+  hittable_list world;
+
+  auto red = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.65, .05, .05}));
+  auto white = std::make_shared<lambertian>(std::make_shared<solid_color>(color{0.73, 0.73, 0.73}));
+  auto green = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.12, .45, .15}));
+  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color(8)));
+
+  world.push_back(std::make_shared<quad>(point3(18, -4, -3), vec3(0, 8, 0), vec3(0, 0, 6), green));
+  world.push_back(std::make_shared<quad>(point3(0, -4, -3), vec3(0, 8, 0), vec3(0, 0, 6), red));
+  world.push_back(std::make_shared<quad>(point3(0, -4, -3), vec3(18, 0, 0), vec3(0, 0, 6), white));
+  world.push_back(std::make_shared<quad>(point3(0, 4, -3), vec3(18, 0, 0), vec3(0, 0, 6), white));
+  world.push_back(std::make_shared<quad>(point3(0, -4, -3), vec3(18, 0, 0), vec3(0, 10, 0), white));
+
+  auto earth_tex = std::make_shared<picture_texture>(std::make_shared<image>("./assets/earthmap.jpg"));
+  auto gloss_100 = std::make_shared<gloss>(earth_tex, 1.0, 1.00);
+  auto gloss_40 = std::make_shared<gloss>(earth_tex, 1.0, 0.40);
+  auto gloss_15 = std::make_shared<gloss>(earth_tex, 1.0, 0.15);
+  auto gloss_02 = std::make_shared<gloss>(earth_tex, 1.0, 0.02);
+
+  world.push_back(std::make_shared<sphere>(point3(3, 0, -0.5), 1.25, gloss_100));
+  world.push_back(std::make_shared<sphere>(point3(7, 0, -0.5), 1.25, gloss_40));
+  world.push_back(std::make_shared<sphere>(point3(11, 0, -0.5), 1.25, gloss_15));
+  world.push_back(std::make_shared<sphere>(point3(15, 0, -0.5), 1.25, gloss_02));
+
+  auto quad_light = std::make_shared<quad>(point3(5.5, 3.995, -1.25), vec3(7, 0, 0), vec3(0, 0, 2.5), light);
+  world.push_back(quad_light);
+
+  bvh_node bvh(world);
+
+  camera cam;
+  cam.initialize_perspective(760, 19.0 / 9.0, point3(9, 0, 15.2), point3(9, 0, 1), 1, 40.0, 1000, 10);
+  cam.background_ = solid_color::black;
+  cam.render(of, bvh, quad_light);
 }
 
 void glass_fox() {
@@ -499,7 +535,7 @@ void different_fuzz_metal() {
   world.push_back(std::make_shared<sphere>(point3(12.5, 0, -0.5), 1.25, fuzz_75));
   world.push_back(std::make_shared<sphere>(point3(16, 0, -0.5), 1.25, fuzz_10));
 
-  auto quad_light = std::make_shared<quad>(point3(7, 3.995, -1.5), vec3(4, 0, 0), vec3(0, 0, 3), light);
+  auto quad_light = std::make_shared<quad>(point3(5.5, 3.995, -1.25), vec3(7, 0, 0), vec3(0, 0, 2.5), light);
   world.push_back(quad_light);
 
   bvh_node bvh(world);
@@ -516,7 +552,7 @@ void infinite_reflection() {
   auto white = std::make_shared<lambertian>(std::make_shared<solid_color>(color{0.73, 0.73, 0.73}));
   auto green = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.12, .45, .15}));
   auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(0.80)), 0.0);
-  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color{7}));
+  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color{5 }));
 
   world.push_back(std::make_shared<quad>(point3(555, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), green));
   world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), red));
@@ -526,7 +562,7 @@ void infinite_reflection() {
   world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(555, 0, 0), vec3(0, 555, 0), metal_mat));
 
   auto earth_tex = std::make_shared<picture_texture>(std::make_shared<image>("./assets/earthmap.jpg"));
-  world.push_back(std::make_shared<sphere>(point3(460, 80, 80), 60, std::make_shared<lambertian>(earth_tex)));
+  world.push_back(std::make_shared<sphere>(point3(460, 80, 80), 60, std::make_shared<gloss>(earth_tex, 0.97, 0.18)));
 
   auto cube = std::make_shared<translate>(vec3(130, 0, 65), std::make_shared<rotate_y>(box(point3(0), point3(140, 140, 140), white), -15));
   world.push_back(cube);
@@ -537,7 +573,7 @@ void infinite_reflection() {
   bvh_node bvh(world);
 
   camera cam;
-  cam.initialize_perspective(600, 1.0, point3(500, 290, 550), point3(400, 278, 0), 1, 40.0, 200, 10);
+  cam.initialize_perspective(600, 1.0, point3(500, 290, 550), point3(400, 278, 0), 1, 40.0, 1000, 30);
   cam.background_ = solid_color::black;
   cam.render(of, bvh, quad_light);
 }
@@ -561,6 +597,7 @@ int main() {
       {"White Sphere", white_sphere},
       {"Different Fuzz Metal", different_fuzz_metal},
       {"Infinite Reflection", infinite_reflection},
+      {"Cornell Box with Glossy Ball", cornell_box_with_glossy_ball},
   };
 
   // Prompt for output file name
