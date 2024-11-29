@@ -4,7 +4,7 @@
 #include <iostream>
 
 #include "stb_image.h"
-#include "tinyexr/tinyexr.h"
+#include <tinyexr.h>
 
 class image {
 public:
