@@ -46,7 +46,8 @@ inline vec3 random_unit_vec() { return unit_vector(random_in_unit_sphere()); }
 inline vec3 random_in_unit_disk() {
   while (true) {
     auto p = vec3(random_double(-1, 1), random_double(-1, 1), 0);
-    if (p.length_squared() < 1) return p;
+    if (p.length_squared() < 1)
+      return p;
   }
 }
 // Return a random vector in unit hemisphere, and the direction of hemisphere is specified by normal vector.
@@ -74,9 +75,15 @@ inline vec3 refract(const vec3 &v, const vec3 &n, double eta) {
   return r_out_perp + r_out_parallel;
 }
 inline double clamp(double x, double min, double max) {
-  if (x < min) return min;
-  if (x > max) return max;
+  if (x < min)
+    return min;
+  if (x > max)
+    return max;
   return x;
 }
 inline double linear_interpolation(double t, double a, double b) { return (1 - t) * a + t * b; }
 inline vec3 linear_interpolation(double t, const vec3 &a, const vec3 &b) { return (1 - t) * a + t * b; }
+inline double smoothstep(double min, double max, double x) {
+  x = clamp((x - min) / (max - min), 0.0, 1.0);
+  return x * x * (3 - 2 * x);
+}

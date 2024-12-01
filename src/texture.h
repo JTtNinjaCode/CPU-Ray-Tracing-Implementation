@@ -1,7 +1,7 @@
 #pragma once
 #include "color.h"
 #include "image.h"
-#include "perlin.h"
+#include "noise.h"
 #include "ray.h"
 class texture {
 public:
@@ -84,10 +84,36 @@ public:
   // The color of the texture is black and white, the z-axis changes, there are 7 layers of turb, that is, there are 7 layers of noise
   // superimposed
   color sample(double u, double v, point3 p) override {
-    return color(.5, .5, .5) * (1 + std::sin((p.x() + 70 * noise_.turb(7, p / scale_)) / scale_));
+    return color(.5, .5, .5) * (1 + std::sin((p.x() + 70 * noise_.turb(7, p / scale_))));
   }
 
 private:
   perlin noise_;
   double scale_;
+};
+
+class value_texture : public texture {
+public:
+  value_texture(int resolution) : noise_(resolution) {}
+
+  color sample(double u, double v, point3 p) override { return color(noise_.noise(p)); }
+
+private:
+  value_noise noise_;
+};
+
+class worley_texture : public texture {
+public:
+  color sample(double u, double v, point3 p) override { return color(noise_.noise(p)); }
+
+private:
+  worley_noise noise_;
+};
+
+class voronoi_texture : public texture {
+public:
+  color sample(double u, double v, point3 p) override { return color(noise_.noise(p)); }
+
+private:
+  voronoi_noise noise_;
 };

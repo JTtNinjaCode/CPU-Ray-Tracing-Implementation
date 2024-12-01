@@ -49,7 +49,7 @@ public:
     image_.resize(image_width_ * image_height_);
   }
 
-  void initialize_orthnormal(int image_width, double viewport_height, double aspect_ratio, point3 pos, vec3 lookat,
+  void initialize_orthnormal(int image_width, double aspect_ratio, double viewport_height, point3 pos, vec3 lookat,
                              int sample_per_pixel = 100, int max_recur_depth = 5) {
     mode_ = kOrthnormal;
     pos_ = pos;
@@ -62,13 +62,13 @@ public:
     image_width_ = image_width;
     image_height_ = int(image_width / aspect_ratio);
     image_height_ = (image_height_ < 1) ? 1 : image_height_;
+    image_.resize(image_width_ * image_height_);
 
     samples_per_pixel_ = sample_per_pixel;
     max_recur_depth_ = max_recur_depth;
 
     viewport_height_ = viewport_height;
     viewport_width_ = viewport_height * (double(image_width_) / image_height_);
-    image_.resize(image_width_ * image_height_);
   }
 
   void initialize_fisheye(int image_width, double aspect_ratio, point3 pos, vec3 lookat, float focal_length = 1, float fovy_degree = 90,
@@ -255,7 +255,7 @@ private:
       vec3 offset = sample_square();
       point3 rand_pos = pos + offset.x() * delta_u + offset.y() * delta_v;
       double ray_time = random_double();
-      //////return {rand_pos, dir_, ray_time};
+      return {rand_pos, dir_, ray_time};
     } else if (mode_ == kFisheye) {
       point3 ray_dir00 = focal_length_ * dir_ - viewport_width_ / 2.0 * right_ + viewport_height_ / 2.0 * up_ + 0.5 * (delta_u + delta_v);
       point3 ray_dir = ray_dir00 + x * delta_u + y * delta_v;

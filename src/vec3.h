@@ -80,3 +80,8 @@ vec3 cross(const vec3 &lhs, const vec3 &rhs) {
   return vec3(lhs.e[1] * rhs.e[2] - lhs.e[2] * rhs.e[1], lhs.e[2] * rhs.e[0] - lhs.e[0] * rhs.e[2],
               lhs.e[0] * rhs.e[1] - lhs.e[1] * rhs.e[0]);
 }
+
+vec3 floor(const vec3 &v) { return vec3(std::floor(v.x()), std::floor(v.y()), std::floor(v.z())); }
+vec3 ceil(const vec3 &v) { return vec3(std::ceil(v.x()), std::ceil(v.y()), std::ceil(v.z())); }
+vec3 fmod(const vec3 &v, const vec3 &mod) { return vec3(std::fmod(v.x(), mod.x()), std::fmod(v.y(), mod.y()), std::fmod(v.z(), mod.z())); }
+vec3 fract(const vec3 &v) { return v - floor(v); }

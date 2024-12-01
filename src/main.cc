@@ -552,7 +552,7 @@ void infinite_reflection() {
   auto white = std::make_shared<lambertian>(std::make_shared<solid_color>(color{0.73, 0.73, 0.73}));
   auto green = std::make_shared<lambertian>(std::make_shared<solid_color>(color{.12, .45, .15}));
   auto metal_mat = std::make_shared<metal>(std::make_shared<solid_color>(color(0.80)), 0.0);
-  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color{5 }));
+  auto light = std::make_shared<diffuse_light>(std::make_shared<solid_color>(color{5}));
 
   world.push_back(std::make_shared<quad>(point3(555, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), green));
   world.push_back(std::make_shared<quad>(point3(0, 0, 0), vec3(0, 555, 0), vec3(0, 0, 555), red));
@@ -578,6 +578,58 @@ void infinite_reflection() {
   cam.render(of, bvh, quad_light);
 }
 
+void test_perlin_noise() {
+  hittable_list world;
+
+  auto perlin_noise = std::make_shared<lambertian>(std::make_shared<perlin_texture>(1));
+  auto perlin_quad = std::make_shared<quad>(point3(0, 0, 0), vec3(10, 0, 0), vec3(0, 10, 0), perlin_noise);
+  world.push_back(perlin_quad);
+
+  camera cam;
+  cam.initialize_orthnormal(400, 1, 10, vec3(5, 5, 1), vec3(5, 5, 0), 10, 5);
+  cam.background_ = solid_color::white;
+  cam.render(of, world);
+}
+
+void test_value_noise() {
+  hittable_list world;
+
+  auto value_noise = std::make_shared<lambertian>(std::make_shared<value_texture>(40));
+  auto value_quad = std::make_shared<quad>(point3(0, 0, 0), vec3(40, 0, 0), vec3(0, 40, 0), value_noise);
+  world.push_back(value_quad);
+
+  camera cam;
+  cam.initialize_orthnormal(400, 1, 20, vec3(20, 20, 1), vec3(20, 20, 0), 10, 5);
+  cam.background_ = solid_color::white;
+  cam.render(of, world);
+}
+
+void test_worley_noise() {
+  hittable_list world;
+
+  auto worley_noise = std::make_shared<lambertian>(std::make_shared<worley_texture>());
+  auto worley_quad = std::make_shared<quad>(point3(0, 0, 0), vec3(40, 0, 0), vec3(0, 40, 0), worley_noise);
+  world.push_back(worley_quad);
+
+  camera cam;
+  cam.initialize_orthnormal(400, 1, 20, vec3(20, 20, 1), vec3(20, 20, 0), 10, 5);
+  cam.background_ = solid_color::white;
+  cam.render(of, world);
+}
+
+void test_voronoi_noise() {
+  hittable_list world;
+
+  auto voronoi_noise = std::make_shared<lambertian>(std::make_shared<voronoi_texture>());
+  auto voronoi_quad = std::make_shared<quad>(point3(0, 0, 0), vec3(40, 0, 0), vec3(0, 40, 0), voronoi_noise);
+  world.push_back(voronoi_quad);
+
+  camera cam;
+  cam.initialize_orthnormal(400, 1, 20, vec3(20, 20, 1), vec3(20, 20, 0), 10, 5);
+  cam.background_ = solid_color::white;
+  cam.render(of, world);
+}
+
 int main() {
   std::vector<std::pair<std::string, std::function<void()>>> test_cases = {
       {"Three Material Ball", three_material_ball},
@@ -598,6 +650,10 @@ int main() {
       {"Different Fuzz Metal", different_fuzz_metal},
       {"Infinite Reflection", infinite_reflection},
       {"Cornell Box with Glossy Ball", cornell_box_with_glossy_ball},
+      {"Test Perlin Noise", test_perlin_noise},
+      {"Test Value Noise", test_value_noise},
+      {"Test Worley Noise", test_worley_noise},
+      {"Test Voronoi Noise", test_voronoi_noise},
   };
 
   // Prompt for output file name
